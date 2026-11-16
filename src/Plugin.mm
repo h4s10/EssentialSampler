@@ -1,6 +1,9 @@
 #include "Engine.hpp"
 #include "State.hpp"
 #include "Editor.hpp"
+#ifdef _WIN32
+#include "WindowsEditor.hpp"
+#endif
 #include "pluginterfaces/base/ipluginbase.h"
 #include "pluginterfaces/base/ibstream.h"
 #include "pluginterfaces/gui/iplugview.h"
@@ -37,7 +40,11 @@ class Plugin;
 class Editor final : public IPlugView {
     std::atomic<uint32> refs{1};
     Plugin* owner;
+#ifdef _WIN32
+    std::unique_ptr<WindowsEditor> view;
+#else
     HLView* __strong view = nil;
+#endif
     IPlugFrame* frame = nullptr;
 public:
     explicit Editor(Plugin* p);
@@ -49,15 +56,35 @@ public:
     }
     uint32 PLUGIN_API addRef() override { return ++refs; }
     uint32 PLUGIN_API release() override { auto n = --refs; if (!n) delete this; return n; }
-    tresult PLUGIN_API isPlatformTypeSupported(FIDString type) override { return type && !std::strcmp(type, kPlatformTypeNSView) ? kResultTrue : kResultFalse; }
+    tresult PLUGIN_API isPlatformTypeSupported(FIDString type) override { return type && !std::strcmp(type,
+#ifdef _WIN32
+        kPlatformTypeHWND
+#else
+        kPlatformTypeNSView
+#endif
+    ) ? kResultTrue : kResultFalse; }
     tresult PLUGIN_API attached(void* parent, FIDString type) override;
-    tresult PLUGIN_API removed() override { if (view) { [view detach]; [view removeFromSuperview]; view = nil; } return kResultOk; }
+    tresult PLUGIN_API removed() override {
+#ifdef _WIN32
+        if (view) { view->detach(); view.reset(); }
+#else
+        if (view) { [view detach]; [view removeFromSuperview]; view = nil; }
+#endif
+        return kResultOk;
+    }
     tresult PLUGIN_API onWheel(float) override { return kResultFalse; }
     tresult PLUGIN_API onKeyDown(char16, int16, int16) override { return kResultFalse; }
     tresult PLUGIN_API onKeyUp(char16, int16, int16) override { return kResultFalse; }
     tresult PLUGIN_API getSize(ViewRect* r) override { if (!r) return kInvalidArgument; *r = ViewRect(0, 0, editorWidth, editorHeight); return kResultOk; }
     tresult PLUGIN_API onSize(ViewRect* r) override { return r && r->getWidth() == editorWidth && r->getHeight() == editorHeight ? kResultOk : kResultFalse; }
-    tresult PLUGIN_API onFocus(TBool state) override { if (!state) [view stopNotes]; return kResultOk; }
+    tresult PLUGIN_API onFocus(TBool state) override {
+#ifdef _WIN32
+        if (!state && view) view->stopNotes();
+#else
+        if (!state) [view stopNotes];
+#endif
+        return kResultOk;
+    }
     tresult PLUGIN_API setFrame(IPlugFrame* f) override { if (f) f->addRef(); if (frame) frame->release(); frame = f; return kResultOk; }
     tresult PLUGIN_API canResize() override { return kResultFalse; }
     tresult PLUGIN_API checkSizeConstraint(ViewRect* r) override { if (!r) return kInvalidArgument; r->right = r->left + editorWidth; r->bottom = r->top + editorHeight; return kResultOk; }
@@ -234,12 +261,25 @@ Editor::Editor(Plugin* p) : owner(p) { owner->addRef(); }
 Editor::~Editor() { removed(); if (frame) frame->release(); owner->release(); }
 tresult Editor::attached(void* parent, FIDString type) {
     if (!parent || view || isPlatformTypeSupported(type) != kResultTrue) return kInvalidArgument;
+#ifdef _WIN32
+    try {
+        auto candidate = std::make_unique<WindowsEditor>(owner->model, true);
+        auto* p = owner;
+        candidate->setCallbacks([p](uint32_t id) { p->beginEdit(id); },
+            [p](uint32_t id, double v) { p->change(id, v); },
+            [p](uint32_t id) { p->endEdit(id); }, [p]() { p->dirty(); });
+        if (!candidate->attach(parent)) return kResultFalse;
+        view = std::move(candidate);
+        return kResultOk;
+    } catch (...) { return kOutOfMemory; }
+#else
     view = [[HLView alloc] initWithModel:owner->model]; [view setHosted:YES]; auto* p = owner;
     [view setBeginEdit:[p](uint32_t id) { p->beginEdit(id); }
                change:[p](uint32_t id, double v) { p->change(id, v); }
                   end:[p](uint32_t id) { p->endEdit(id); }
                 dirty:[p]() { p->dirty(); }];
     [(__bridge NSView*)parent addSubview:view]; return kResultOk;
+#endif
 }
 class Factory final : public IPluginFactory2 {
     std::atomic<uint32> refs{1};
@@ -262,7 +302,7 @@ public:
     tresult PLUGIN_API getClassInfo2(int32 index, PClassInfo2* info) override {
         if (index || !info) return kInvalidArgument; *info = {}; std::memcpy(info->cid, componentId, 16);
         info->cardinality = PClassInfo::kManyInstances; ascii(info->category, kVstAudioEffectClass); ascii(info->name, "Essential Sampler");
-        ascii(info->subCategories, "Instrument|Sampler"); ascii(info->vendor, "hasio"); ascii(info->version, "0.6.2"); ascii(info->sdkVersion, "VST 3.8.0"); return kResultOk;
+        ascii(info->subCategories, "Instrument|Sampler"); ascii(info->vendor, "hasio"); ascii(info->version, "0.7.0"); ascii(info->sdkVersion, "VST 3.8.0"); return kResultOk;
     }
     tresult PLUGIN_API createInstance(FIDString cid, FIDString iid, void** out) override {
         if (!out) return kInvalidArgument; *out = nullptr; if (!same(cid, componentId)) return kNoInterface;
@@ -270,6 +310,13 @@ public:
     }
 };
 }
+#ifndef _WIN32
 extern "C" __attribute__((visibility("default"))) bool bundleEntry(CFBundleRef) { return true; }
 extern "C" __attribute__((visibility("default"))) bool bundleExit() { return true; }
-extern "C" __attribute__((visibility("default"))) IPluginFactory* GetPluginFactory() { return new Factory; }
+#define ESSENTIAL_EXPORT __attribute__((visibility("default")))
+#else
+#define ESSENTIAL_EXPORT __declspec(dllexport)
+extern "C" ESSENTIAL_EXPORT bool InitDll() { return true; }
+extern "C" ESSENTIAL_EXPORT bool ExitDll() { return true; }
+#endif
+extern "C" ESSENTIAL_EXPORT IPluginFactory* GetPluginFactory() { return new Factory; }

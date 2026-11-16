@@ -77,7 +77,7 @@ The plugin's own letter-to-note mapping is standalone-only. Editor-triggered not
 
 ## State and compatibility
 
-The plugin embeds the sample's PCM and parameter state in the DAW project. The original file is not needed after saving. VST3 and AU share the internal state format, but changing plugin format in a DAW project is not an automatic migration.
+The plugin embeds the sample's PCM and parameter state in the DAW project. The original file is not needed after saving. macOS and Windows VST3 and macOS AU share the internal state format, but changing plugin format in a DAW project is not an automatic migration.
 
 - States from 0.1.0 load with the old Crossfade mapped to both loop fades and Keep duration disabled. Tune now preserves duration, so older sessions with nonzero Tune can sound different.
 - Older 0.2.0 states receive Speed = 1×, Free mode and 120 BPM defaults.
@@ -91,3 +91,7 @@ The stereo phase vocoder uses a 2048-point FFT with 8× overlap. At zero shift, 
 The 0.5.1 bandwidth fix preserves original high-frequency content during fast Sync playback, including Reverse + 1/32. At extreme compression, stronger attacks are prioritized within analysis intervals, and adjacent events can merge. This does not guarantee perceptual transparency for all material.
 
 Conventional upward MIDI resampling can alias. There is no formant preservation or dedicated transient mode. See [verification](VERIFICATION.md) for measured behavior and the [README](../README.md) for platform limits.
+
+## Windows details
+
+The Windows editor uses the same controls and parameter ranges. Mouse wheel zooms the detailed waveform; Shift-wheel and horizontal scrolling pan. Pinch is supported when the touchpad driver delivers Windows zoom gestures. The standalone opens the default Windows audio output. Use your DAW audio settings when running VST3.

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version=0.6.2
+version=0.7.0
 folder="releases/$version"
 for extension in vst3 component app; do codesign --verify --strict "$folder/Essential Sampler.$extension"; done
 cp README.md CHANGELOG.md THIRD_PARTY_NOTICES.md LICENSE "$folder/"

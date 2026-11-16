@@ -148,10 +148,6 @@ Actual Ableton shortcut routing, physical trackpad gestures and sound quality on
 
 A separate read-only code review found overlapping S/E tags on short loops near sample edges. A new regression reproduced the wrong-boundary edit (Start moved from 0.99 to 0.979163 when targeting E); drawing and hit testing now share separated tag geometry, and the full test suite passes. No other critical, important or minor findings were reported. Reference fidelity was checked by inspecting native screenshots; actual Ableton shortcut handling and musical audition remain manual checks.
 
-## Iris investigation boundary
-
-The supplied Intel binary was inspected (x86_64 slice SHA256 `ad366ac7ad9e3bc0b8335e0288b0f44de4614646fc85faf0816ebd5877030ffb`). RTTI identifies Distortion/ChorusEffect DSP classes; strings and bundled manual pp. 50–52 identify controls, six distortion types and master routing. REA accepted the thin Mach-O; deeper procedure analysis returned provider_unavailable because no decompiler is configured. Effects.cpp is a new native DSP implementation, not recovered source. Sound equivalence to Iris was not measured or claimed. Original payloads stay outside distribution.
-
 ## 0.5.0 review
 
 Independent read-only review checked DSP stability/realtime behavior, reset paths, old state loading, routing, UI hit handling and hosted focus. It identified the numeric-field → popup/segment focus case. The added regression failed before the fix, passed after it, and the fresh full suite passed. Reviewer reported no remaining Critical/Important/Minor findings.

@@ -3,7 +3,7 @@
 #include <vector>
 
 namespace hasio {
-// New native implementations of the Iris 1 documented effect families.
+// Native distortion and chorus implementations.
 // No proprietary DSP, binary payloads or assets are linked into this module.
 struct FxSettings {
     bool distEnabled = false, chorusEnabled = false;

@@ -8,8 +8,12 @@
 #include "pluginterfaces/vst/ivstevents.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
 #include "pluginterfaces/vst/ivstprocesscontext.h"
+#ifdef _WIN32
+#include <windows.h>
+#else
 #import <Cocoa/Cocoa.h>
 #include <dlfcn.h>
+#endif
 #include <cassert>
 #include <iostream>
 using namespace Steinberg;
@@ -63,6 +67,7 @@ struct Changes final : IParameterChanges {
     IParamValueQueue* PLUGIN_API getParameterData(int32 index) override { return index == 0 ? &queue : nullptr; }
     IParamValueQueue* PLUGIN_API addParameterData(const ParamID& id, int32& index) override { queue.id = id; index = 0; return &queue; }
 };
+#ifndef _WIN32
 @interface HostEditorSurface : NSView
 @property(nonatomic) int backspaces;
 @end
@@ -71,8 +76,24 @@ struct Changes final : IParameterChanges {
 - (void)keyDown:(NSEvent*)event { if (event.keyCode == 51) ++_backspaces; }
 @end
 
+#else
+static int hostBackspaces = 0;
+static LRESULT CALLBACK hostWindowProc(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
+    if (msg == WM_KEYDOWN && w == VK_BACK) { ++hostBackspaces; return 0; }
+    return DefWindowProcW(hwnd, msg, w, l);
+}
+#endif
 int main(int argc, char** argv) {
     assert(argc == 2);
+#ifdef _WIN32
+    {
+        auto handle = LoadLibraryA(argv[1]);
+        if (!handle) { std::cerr << "LoadLibrary error " << GetLastError() << '\n'; return 1; }
+        auto entry = reinterpret_cast<bool (*)()>(GetProcAddress(handle, "InitDll"));
+        auto exit = reinterpret_cast<bool (*)()>(GetProcAddress(handle, "ExitDll"));
+        assert(entry && exit && entry());
+        auto getFactory = reinterpret_cast<IPluginFactory* (*)()>(GetProcAddress(handle, "GetPluginFactory")); assert(getFactory);
+#else
     @autoreleasepool {
         [NSApplication sharedApplication];
         auto handle = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL); if (!handle) { std::cerr << dlerror() << '\n'; return 1; }
@@ -80,11 +101,14 @@ int main(int argc, char** argv) {
         auto exit = reinterpret_cast<bool (*)()>(dlsym(handle, "bundleExit"));
         assert(entry && exit && entry(nullptr));
         auto getFactory = reinterpret_cast<IPluginFactory* (*)()>(dlsym(handle, "GetPluginFactory")); assert(getFactory);
+#endif
         auto factory = getFactory(); assert(factory && factory->countClasses() == 1);
         PClassInfo info{}; assert(factory->getClassInfo(0, &info) == kResultOk);
         assert(std::string(info.name) == "Essential Sampler");
+        DECLARE_UID(expectedId, 0x48415349, 0x4F4C4F4F, 0x50565354, 0x33000001)
+        assert(std::memcmp(info.cid, expectedId, 16) == 0);
         IPluginFactory2* f2 = nullptr; assert(factory->queryInterface(IPluginFactory2_iid, reinterpret_cast<void**>(&f2)) == kResultOk);
-        PClassInfo2 info2{}; assert(f2->getClassInfo2(0, &info2) == kResultOk); assert(std::string(info2.subCategories) == "Instrument|Sampler"); f2->release();
+        PClassInfo2 info2{}; assert(f2->getClassInfo2(0, &info2) == kResultOk); assert(std::string(info2.subCategories) == "Instrument|Sampler"); assert(std::string(info2.version) == "0.7.0"); f2->release();
         IComponent* comp = nullptr;
         assert(factory->createInstance(info.cid, IComponent_iid, reinterpret_cast<void**>(&comp)) == kResultOk);
         assert(comp->initialize(nullptr) == kResultOk);
@@ -219,6 +243,30 @@ int main(int argc, char** argv) {
         assert(std::abs(control->normalizedParamToPlain(hasio::ChorusRate,control->getParamNormalized(hasio::ChorusRate))-2.5)<1.e-9);
         auto* editor = control->createView(ViewType::kEditor); assert(editor);
         assert(editor->onKeyDown('s', 0, 1) == kResultFalse && editor->onKeyUp('s', 0, 1) == kResultFalse);
+#ifdef _WIN32
+        assert(editor->isPlatformTypeSupported(kPlatformTypeHWND) == kResultTrue);
+        assert(editor->isPlatformTypeSupported(kPlatformTypeNSView) == kResultFalse);
+        ViewRect size; assert(editor->getSize(&size) == kResultOk);
+        WNDCLASSW wc{}; wc.lpfnWndProc = hostWindowProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"EssentialSamplerTestHost";
+        assert(RegisterClassW(&wc));
+        HWND parent = CreateWindowW(wc.lpszClassName, L"Test host", WS_OVERLAPPEDWINDOW,
+            0, 0, size.getWidth(), size.getHeight(), nullptr, nullptr, wc.hInstance, nullptr);
+        assert(parent); ShowWindow(parent, SW_SHOW); SetFocus(parent);
+        assert(editor->attached(parent, kPlatformTypeHWND) == kResultOk);
+        HWND child = GetWindow(parent, GW_CHILD); assert(child);
+        RECT bounds{}; assert(GetClientRect(child, &bounds)); assert(bounds.right == size.getWidth() && bounds.bottom == size.getHeight());
+        SendMessageW(child, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(400, 350));
+        SendMessageW(child, WM_LBUTTONUP, 0, MAKELPARAM(400, 350));
+        assert(GetFocus() == parent);
+        SendMessageW(GetFocus(), WM_KEYDOWN, VK_BACK, 0); assert(hostBackspaces == 1);
+        assert(editor->onKeyDown(127, 1, 0) == kResultFalse && editor->onKeyUp(127, 1, 0) == kResultFalse);
+        assert(editor->onFocus(false) == kResultOk);
+        assert(editor->removed() == kResultOk && GetWindow(parent, GW_CHILD) == nullptr);
+        // A host may reuse the view after closing and reopening its window.
+        assert(editor->attached(parent, kPlatformTypeHWND) == kResultOk);
+        assert(editor->removed() == kResultOk); editor->release();
+        DestroyWindow(parent); UnregisterClassW(wc.lpszClassName, wc.hInstance);
+#else
         assert(editor->isPlatformTypeSupported(kPlatformTypeNSView) == kResultTrue);
         ViewRect editorSize; assert(editor->getSize(&editorSize) == kResultOk);
         HostEditorSurface* parent = [[HostEditorSurface alloc] initWithFrame:NSMakeRect(0, 0, editorSize.getWidth(), editorSize.getHeight())];
@@ -251,9 +299,13 @@ int main(int argc, char** argv) {
         }
         assert(editor->onKeyDown(127, 1, 0) == kResultFalse && editor->onKeyUp(127, 1, 0) == kResultFalse);
         assert(editor->removed() == kResultOk && parent.subviews.count == 0); editor->release();
+#endif
         processor->setProcessing(false); comp->setActive(false); comp->terminate();
         control->release(); processor->release(); comp->release(); factory->release(); assert(exit());
-        // Cocoa class registrations remain resident until process exit, like a DAW plugin cache.
-        std::cout << "PASS: ARM64 VST3 load, factory, single component/controller, stereo/MIDI buses, 32/64-bit render, sample-accurate note and automation offsets, portable state, malformed state, editor lifecycle\n";
+#ifdef _WIN32
+        assert(FreeLibrary(handle));
+#endif
+        // Cocoa classes remain resident until process exit on macOS.
+        std::cout << "PASS: native VST3 load, factory, single component/controller, stereo/MIDI buses, 32/64-bit render, sample-accurate note and automation offsets, portable state, malformed state, editor lifecycle\n";
     }
 }

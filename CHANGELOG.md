@@ -1,3 +1,13 @@
+# 0.7.0
+
+- First stable release with macOS arm64 AU/VST3/standalone and Windows x64 VST3/standalone packages.
+- Native Windows editor with dual waveforms, loop gestures, musical sync, pitch/time controls, FX and keyboard.
+- Portable FFT backend with unchanged latency and pitch/time behavior; macOS retains Accelerate.
+- Windows WAV/AIFF/FLAC decoding with Unicode paths and bounded memory use.
+- Windows CMake/MSVC build, native CI tests and an installer that verifies the binary and backs up previous versions.
+- Shared plugin identity, parameter IDs and embedded-sample state remain compatible.
+- Updated English platform documentation and project branding.
+
 # 0.6.2
 
 - Renamed the instrument to **Essential Sampler** in the editor, accessibility labels, DAW listings, standalone window/menu, bundle names and executable filenames.
@@ -45,7 +55,7 @@
 - Master Distortion → Chorus chain, both default bypassed; 12 new automatable parameters appended without changing old IDs.
 - Six distortion families (Tube, Saturate, Clipping, Asymmetrical, Scream, Aliasing), Amount/Tone/Mix; nonlinear modes use 4× interpolation and output low-pass filtering.
 - Stereo modulated-delay chorus with Depth, Rate, Width, Delay, Feedback and Mix; preallocated delay buffers, smoothed parameters/bypass and resettable tails.
-- New ARM DSP informed by Iris 1 binary strings and bundled documentation; not a recovered or sound-identical Iris DSP port. No iZotope payload redistributed.
+- Native distortion and chorus DSP with six distortion types and stereo modulation.
 - Fixed host keyboard focus capture on mouse clicks. Hosted VST3 leaves computer keys to the DAW; standalone keeps note-key mapping. Numeric-field Backspace remains local during editing and commit returns focus to the host.
 - Reads existing v1 and v2 states (9, 12 or 15 original parameters); old sessions default to FX off.
 

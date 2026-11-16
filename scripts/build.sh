@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-mkdir -p build/obj releases/0.6.2
+mkdir -p build/obj releases/0.7.0
 flags=(-std=c++17 -O2 -g -arch arm64 -mmacosx-version-min=27.0 -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Isrc -Ithird_party -Ithird_party/flac/include)
 frameworks=(-framework Cocoa -framework AudioToolbox -framework CoreAudio -framework UniformTypeIdentifiers -framework Accelerate)
 libraries=(third_party/flac/lib/libFLAC.a third_party/ogg/lib/libogg.a)
@@ -15,11 +15,11 @@ for source in Effects.cpp PitchShifter.cpp Engine.cpp AudioFile.mm Editor.mm Plu
     fi
 done
 clang++ "${flags[@]}" -fobjc-arc -DHLView=HLAUView -c src/Editor.mm -o build/obj/EditorAU.o
-component="releases/0.6.2/Essential Sampler.component"
+component="releases/0.7.0/Essential Sampler.component"
 mkdir -p "$component/Contents/MacOS"
 clang++ -bundle -arch arm64 -mmacosx-version-min=27.0 build/obj/{Engine,Effects,PitchShifter,AudioFile,EditorAU,AudioUnit}.o "${libraries[@]}" "${frameworks[@]}" -o "$component/Contents/MacOS/EssentialSampler"
-plugin="releases/0.6.2/Essential Sampler.vst3"
-app="releases/0.6.2/Essential Sampler.app"
+plugin="releases/0.7.0/Essential Sampler.vst3"
+app="releases/0.7.0/Essential Sampler.app"
 mkdir -p "$plugin/Contents/MacOS" "$plugin/Contents/Resources" "$app/Contents/MacOS"
 clang++ -bundle -arch arm64 -mmacosx-version-min=27.0 build/obj/{Engine,Effects,PitchShifter,AudioFile,Editor,Plugin}.o "${libraries[@]}" "${frameworks[@]}" -o "$plugin/Contents/MacOS/EssentialSampler"
 clang++ -arch arm64 -mmacosx-version-min=27.0 build/obj/{Engine,Effects,PitchShifter,AudioFile,Editor,Standalone}.o "${libraries[@]}" "${frameworks[@]}" -o "$app/Contents/MacOS/EssentialSampler"

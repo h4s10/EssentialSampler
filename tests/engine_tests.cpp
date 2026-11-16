@@ -1,6 +1,6 @@
 #include "Engine.hpp"
 #include "State.hpp"
-#include <Accelerate/Accelerate.h>
+#include "FFT.hpp"
 #include <cassert>
 #include <iostream>
 #include <thread>
@@ -22,8 +22,7 @@ static double frequency(const std::vector<float>& samples, double rate) {
     std::array<float, n> real{}, imaginary{};
     constexpr double pi = 3.14159265358979323846;
     for (size_t i = 0; i < n; ++i) real[i] = samples[8192 + i] * static_cast<float>(.5 - .5 * std::cos(2 * pi * i / n));
-    DSPSplitComplex split{real.data(), imaginary.data()};
-    auto fft = vDSP_create_fftsetup(15, kFFTRadix2); vDSP_fft_zip(fft, &split, 1, 15, FFT_FORWARD); vDSP_destroy_fftsetup(fft);
+    FFT fft(n); fft.forward(real.data(), imaginary.data());
     auto mag = [&](int i) { return std::hypot(real[i], imaginary[i]); };
     int peak = 1; for (int i = 2; i < static_cast<int>(n / 2 - 1); ++i) if (mag(i) > mag(peak)) peak = i;
     double a = std::log(mag(peak - 1) + 1.e-12), b = std::log(mag(peak) + 1.e-12), c = std::log(mag(peak + 1) + 1.e-12);

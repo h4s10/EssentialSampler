@@ -1,22 +1,23 @@
 # Essential Sampler
 
-A native macOS sampler with independent pitch and time controls, hands-on loop editing, distortion and chorus. Available as **VST3**, **Audio Unit (AUv2)** and a standalone app.
+A native macOS and Windows sampler with independent pitch and time controls, hands-on loop editing, distortion and chorus. Available as **VST3** and a standalone app on both platforms, plus **Audio Unit (AUv2)** on macOS.
 
 The instrument appears in your DAW as **hasio → Essential Sampler**. Previously released as Hasio Loop; internal plugin and parameter identifiers are unchanged so hosts can recognize existing sessions after rescanning.
 
 ![Essential Sampler sampler interface with waveform overview, loop editor, pitch and time controls, envelopes and keyboard](docs/preview.png)
 
-[Download v0.6.2](https://github.com/h4s10/EssentialSampler/releases/tag/v0.6.2) · [User guide](docs/USAGE.md) · [Build and test](docs/DEVELOPMENT.md) · [Changelog](CHANGELOG.md)
+[Download v0.7.0](https://github.com/h4s10/EssentialSampler/releases/tag/v0.7.0) · [User guide](docs/USAGE.md) · [Build and test](docs/DEVELOPMENT.md) · [Changelog](CHANGELOG.md)
 
 ## Requirements and release status
 
-- **Apple Silicon (arm64), macOS 27 or newer.** Intel, Windows and older macOS builds are not included.
+- **macOS:** Apple Silicon (arm64), macOS 27 or newer. Intel and older macOS builds are not included.
+- **Windows:** Windows 10/11 x64 and a 64-bit VST3 host, or the included standalone app. No 32-bit or Windows ARM build is included.
 - A VST3 host, or Logic Pro / another AUv2 instrument host. The standalone app does not require a DAW.
-- Releases currently use **ad-hoc signatures** and are not Developer ID signed or notarized.
+- macOS binaries are **ad-hoc signed**, not Developer ID signed or notarized. Windows binaries are unsigned.
 
-**This is a prerelease.** DSP, VST3 host, native UI and direct AU interface tests pass. The build environment cannot access the system AudioComponent registry, so Apple `auval` and actual Logic integration have not yet been confirmed. See [verification details](docs/VERIFICATION.md).
+**0.7.0 is the first stable release.** Automated tests exercise DSP, decoders, plugin loading, state and native editor behavior. Windows builds run on a native Windows CI runner. Commercial DAW compatibility and system AU validation are separate from these tests; see [verification details](docs/VERIFICATION.md).
 
-## Install
+## Install on macOS
 
 1. Download and unzip **AU**, **VST3** or **all** from [Releases](https://github.com/h4s10/EssentialSampler/releases).
 2. Close your DAW and run `Install.command`. Existing plugin versions are backed up beside the installed bundle.
@@ -35,7 +36,7 @@ The installer verifies each bundle's signature and identity, removes download qu
 
 Version 0.6.0 could immediately run validation before macOS discovered the new component. A message such as `FATAL ERROR: didn't find the component` means discovery failed; audio/DSP validation has not started.
 
-Use the **0.6.2 installer**, or run `Repair-AU.command` from its archive to repair the existing installation without replacing the plugin. The repair verifies the installed bundle, handles its quarantine flag, and refreshes the current user's Audio Unit registrar if the component is missing. It then waits briefly for registration and runs:
+Use the latest **0.7.0 installer**, or run `Repair-AU.command` from its archive to repair the existing installation without replacing the plugin. The repair verifies the installed bundle, handles its quarantine flag, and refreshes the current user's Audio Unit registrar if the component is missing. It then waits briefly for registration and runs:
 
 ```sh
 arch -arm64 auval -v aumu HsLp Hasi
@@ -44,6 +45,16 @@ arch -arm64 auval -v aumu HsLp Hasi
 If it remains unregistered, restart your Mac once and try again. Apple also documents this step for newly installed Audio Units: [Plugin discovery troubleshooting](https://support.apple.com/en-gb/122179).
 
 If the component **is listed** but validation fails, keep the validation log printed by the installer and [open an issue](https://github.com/h4s10/EssentialSampler/issues). Repeated cache resets do not resolve a plugin API or rendering failure. If Logic lists the plugin as failed, use **Settings → Plug-in Manager → Reset & Rescan Selection** after resolving the reported error.
+
+## Install on Windows
+
+1. Download **EssentialSampler-0.7.0-Windows-x64-VST3.zip** or **…-all.zip**, and extract the entire archive.
+2. Close your DAW and run **Install.cmd**. Accept the Windows administrator prompt to install into `C:\Program Files\Common Files\VST3`. The installer verifies the packaged binary checksum and keeps a backup of an existing version.
+3. Reopen the DAW, rescan VST3 plugins and select **hasio → Essential Sampler**. You can also copy the entire **Essential Sampler.vst3** folder to that directory manually; keep its `Contents` hierarchy intact.
+
+The **all** archive also contains **Essential Sampler.exe**; run it directly from the extracted folder. The standalone uses the default Windows output device; use the VST3 in your DAW for its configured audio driver. The compiled Microsoft C++ runtime is included in each executable, so no separate redistributable is required.
+
+Windows SmartScreen may ask for confirmation because these builds are unsigned. The installer applies its PowerShell execution setting only to its own process. It does not change the system execution policy. To uninstall, close the DAW and remove the installed **Essential Sampler.vst3** folder.
 
 ## Updating from Hasio Loop
 
@@ -76,6 +87,8 @@ Pitch/time processing reports a fixed **2048-sample latency** (42.7 ms at 48 kHz
 
 ## Build from source
 
+### macOS
+
 Install Apple Command Line Tools and Python 3 on an Apple Silicon Mac running macOS 27+. The build uses C++17, Objective-C++, Cocoa, AudioToolbox and Accelerate. No JUCE, CMake, full Xcode installation or network download is required.
 
 ```sh
@@ -86,10 +99,23 @@ bash scripts/test.sh
 bash scripts/package.sh
 ```
 
-Bundles are written to `releases/0.6.2/`; zip archives are written to `releases/`. See [development documentation](docs/DEVELOPMENT.md) for architecture, validation and installation commands.
+Bundles are written to `releases/0.7.0/`; zip archives are written to `releases/`. See [development documentation](docs/DEVELOPMENT.md) for architecture, validation and installation commands.
+
+### Windows
+
+Install Visual Studio 2022 Build Tools with **Desktop development with C++**, a Windows SDK and CMake 3.22+. From a developer terminal:
+
+```powershell
+cmake -S . -B build/windows -A x64
+cmake --build build/windows --config Release --parallel
+ctest --test-dir build/windows -C Release --output-on-failure
+./scripts/package-windows.ps1 -BuildDir build/windows/Release
+```
+
+The Windows build uses Win32, WinMM, a portable FFT backend and bundled audio decoders. The [Windows CI workflow](.github/workflows/windows.yml) builds, tests and packages the same source.
 
 ## License and credits
 
 Project code is licensed under **[MIT](LICENSE)**. You may use, modify and distribute it, including commercially, while retaining the copyright and license notice.
 
-VST3 interface headers and Xiph FLAC/Ogg dependencies retain their own notices; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Source, artwork and the oscillator-generated demo sample are part of this project. No iZotope binaries, source code, artwork, presets or samples are distributed. This is an independent sampler, not an Iris DSP port or an affiliated iZotope product.
+VST3 interface headers, Xiph FLAC/Ogg and dr_libs dependencies retain their own notices; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Source, artwork and the oscillator-generated demo sample are part of this project.

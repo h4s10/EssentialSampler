@@ -1,9 +1,8 @@
 #include "PitchShifter.hpp"
-#include <Accelerate/Accelerate.h>
+#include "FFT.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <stdexcept>
 
 namespace hasio {
 struct PitchShifter::Impl {
@@ -28,25 +27,34 @@ struct PitchShifter::Impl {
     std::array<float, n> window{}, real{}, imaginary{};
     std::array<float, bins> analysisMagnitude{}, analysisPhase{}, synthesisPhase{}, adjacentPhase{}, sine{}, cosine{};
     std::array<double, bins> magnitude{}, frequency{};
-    FFTSetup fft = vDSP_create_fftsetup(11, kFFTRadix2);
+    FFT fft{n};
     Impl() {
-        if (!fft) throw std::runtime_error("Cannot initialize pitch FFT");
         for (int i = 0; i < n; ++i) window[i] = static_cast<float>(.5 - .5 * std::cos(tau * i / n));
     }
-    ~Impl() { vDSP_destroy_fftsetup(fft); }
     void transform(Channel& channel, double ratio, const float* source = nullptr) {
         for (int i = 0; i < n; ++i) { real[i] = (source ? source[i] : channel.input[i]) * window[i]; imaginary[i] = 0; }
+        fft.forward(real.data(), imaginary.data());
+#if defined(__APPLE__) && !defined(HASIO_PORTABLE_DSP)
         DSPSplitComplex spectrum{real.data(), imaginary.data()};
-        vDSP_fft_zip(fft, &spectrum, 1, 11, FFT_FORWARD);
         const int binCount = bins;
         vDSP_zvabs(&spectrum, 1, analysisMagnitude.data(), 1, bins);
         vvatan2f(analysisPhase.data(), imaginary.data(), real.data(), &binCount);
+#else
+        for (int k = 0; k < bins; ++k) {
+            analysisMagnitude[k] = std::hypot(real[k], imaginary[k]);
+            analysisPhase[k] = std::atan2(imaginary[k], real[k]);
+        }
+#endif
         if (source) {
             // A fixed nearby analysis hop avoids ambiguous frequency estimates
             // even when consecutive transport positions are many windows apart.
             for (int i = 0; i < n; ++i) { real[i] = source[i + hop] * window[i]; imaginary[i] = 0; }
-            vDSP_fft_zip(fft, &spectrum, 1, 11, FFT_FORWARD);
+            fft.forward(real.data(), imaginary.data());
+#if defined(__APPLE__) && !defined(HASIO_PORTABLE_DSP)
             vvatan2f(adjacentPhase.data(), imaginary.data(), real.data(), &binCount);
+#else
+            for (int k = 0; k < bins; ++k) adjacentPhase[k] = std::atan2(imaginary[k], real[k]);
+#endif
         }
         magnitude.fill(0); frequency.fill(0);
         for (int k = 0; k < bins; ++k) {
@@ -70,14 +78,18 @@ struct PitchShifter::Impl {
             channel.phase[k] = std::remainder(channel.phase[k] + tau * hop * bin / n, tau);
             synthesisPhase[k] = static_cast<float>(channel.phase[k]);
         }
+#if defined(__APPLE__) && !defined(HASIO_PORTABLE_DSP)
         vvsincosf(sine.data(), cosine.data(), synthesisPhase.data(), &binCount);
+#else
+        for (int k = 0; k < bins; ++k) { sine[k] = std::sin(synthesisPhase[k]); cosine[k] = std::cos(synthesisPhase[k]); }
+#endif
         for (int k = 0; k < bins; ++k) {
             real[k] = static_cast<float>(magnitude[k]) * cosine[k];
             imaginary[k] = static_cast<float>(magnitude[k]) * sine[k];
             if (k > 0 && k < n / 2) { real[n - k] = real[k]; imaginary[n - k] = -imaginary[k]; }
         }
         imaginary[0] = imaginary[n / 2] = 0;
-        vDSP_fft_zip(fft, &spectrum, 1, 11, FFT_INVERSE);
+        fft.inverse(real.data(), imaginary.data());
         // Periodic Hann windows at 8x overlap sum their squares to exactly 3.
         for (int i = 0; i < n; ++i) channel.overlap[i] += real[i] * window[i] / (n * 3.f);
         std::copy_n(channel.overlap.begin(), hop, channel.output.begin());

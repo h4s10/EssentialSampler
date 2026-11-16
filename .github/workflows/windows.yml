@@ -1,0 +1,47 @@
+name: Windows x64
+on:
+  push:
+    branches: [main, "release/**"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build/windows -A x64 -DBUILD_TESTING=ON
+      - name: Build
+        run: cmake --build build/windows --config Release --parallel 2
+      - name: Test
+        run: ctest --test-dir build/windows -C Release --output-on-failure
+      - name: DSP benchmark
+        shell: pwsh
+        run: ./build/windows/Release/pitch_benchmark.exe | Tee-Object build/windows-benchmark.log
+      - name: Installer tests
+        shell: pwsh
+        run: ./tests/windows_installer_tests.ps1
+      - name: Package
+        shell: pwsh
+        run: ./scripts/package-windows.ps1 -BuildDir build/windows/Release
+      - name: Installed release smoke
+        shell: pwsh
+        run: ./tests/windows_package_tests.ps1 -BuildDir build/windows/Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EssentialSampler-Windows-x64
+          path: releases/*Windows*.zip
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-test-results
+          path: |
+            build/windows/Testing/Temporary/*.log
+            build/windows-benchmark.log
+            build/windows-*.bmp
+            build/windows-*.png
+          if-no-files-found: ignore

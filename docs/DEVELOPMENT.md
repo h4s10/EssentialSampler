@@ -1,6 +1,6 @@
 # Development
 
-## Build
+## Build on macOS
 
 Requirements: Apple Silicon, macOS 27+, Apple Command Line Tools and Python 3. The checked-in FLAC/Ogg static archives target macOS 27; rebuilding for older systems requires rebuilding those dependencies and updating deployment targets and bundle metadata.
 
@@ -10,7 +10,25 @@ bash scripts/test.sh
 bash scripts/package.sh
 ```
 
-Builds are local and do not fetch dependencies. The output formats are `Essential Sampler.vst3`, `Essential Sampler.component` and `Essential Sampler.app` under `releases/0.6.2/`. All are ad-hoc signed.
+Builds are local and do not fetch dependencies. The output formats are `Essential Sampler.vst3`, `Essential Sampler.component` and `Essential Sampler.app` under `releases/0.7.0/`. All are ad-hoc signed.
+
+## Build on Windows
+
+Requirements: Windows x64, Visual Studio 2022 C++ Build Tools, Windows SDK and CMake 3.22+. Dependencies are checked in; the build does not fetch packages.
+
+```powershell
+cmake -S . -B build/windows -A x64 -DBUILD_TESTING=ON
+cmake --build build/windows --config Release --parallel
+ctest --test-dir build/windows -C Release --output-on-failure
+./tests/windows_installer_tests.ps1
+./scripts/package-windows.ps1 -BuildDir build/windows/Release
+```
+
+Release tests deliberately retain assertions. MSVC links its runtime statically. The VST3 DLL is packaged as `Essential Sampler.vst3/Contents/x86_64-win/Essential Sampler.vst3`, following the [VST3 bundle format](https://steinbergmedia.github.io/vst3_dev_portal/pages/Technical+Documentation/Locations+Format/Plugin+Format.html). The installer uses the [standard shared VST3 folder](https://steinbergmedia.github.io/vst3_dev_portal/pages/Technical+Documentation/Locations+Format/Plugin+Locations.html).
+
+On macOS, `bash scripts/test-portable.sh` additionally runs the Windows DSP/decoder code under AddressSanitizer and UndefinedBehaviorSanitizer without linking Apple audio/DSP frameworks.
+
+GitHub Actions uses `windows-2022` to compile and execute the tests and uploads the release archives and test logs. This verifies Windows APIs and binary loading independently of the macOS build; it is not a test inside a commercial DAW.
 
 ## Architecture
 
@@ -19,9 +37,13 @@ Builds are local and do not fetch dependencies. The output formats are `Essentia
 | `src/Engine.*` | Voices, resampling, loop transport and sample exchange |
 | `src/PitchShifter.*` | Stereo pitch/time processing and preallocated FFT buffers |
 | `src/Effects.*` | Distortion, chorus, smoothing and delay buffers |
-| `src/Plugin.mm` | VST3 component/controller, buses, automation and state |
+| `src/Plugin.mm`, `src/PluginWindows.cpp` | Shared VST3 component/controller, buses, automation and state; platform editor adapters |
 | `src/AudioUnit.mm` | AUv2 factory, properties, MIDI, automation, rendering and Cocoa view factory |
 | `src/Editor.mm` | Shared native Cocoa editor and gestures |
+| `src/WindowsEditor.*` | Native Win32 editor, gestures and file loading lifecycle |
+| `src/WindowsStandalone.cpp` | WinMM output and Windows application lifecycle |
+| `src/AudioFileWindows.cpp` | Portable WAV/AIFF/FLAC decoding |
+| `src/FFT.hpp` | Accelerate adapter and allocation-free portable FFT |
 | `src/AudioFile.mm` | WAV/AIFF via AudioToolbox; FLAC via libFLAC |
 | `src/State.hpp` | Versioned normalized parameters and embedded stereo PCM |
 | `src/Standalone.mm` | Standalone Core Audio output and application lifecycle |
@@ -37,13 +59,13 @@ AU parameters expose physical units and convert to the same normalized engine va
 
 ```sh
 python3 tests/installer_tests.py
-./build/au_host_tests "$PWD/releases/0.6.2/Essential Sampler.component" --direct
+./build/au_host_tests "$PWD/releases/0.7.0/Essential Sampler.component" --direct
 ```
 
 Direct ABI tests do **not** prove OS discovery or Logic compatibility. On a Mac with system registry access, also run:
 
 ```sh
-./build/au_host_tests "$PWD/releases/0.6.2/Essential Sampler.component" validate
+./build/au_host_tests "$PWD/releases/0.7.0/Essential Sampler.component" validate
 bash scripts/install-au.command
 arch -arm64 auval -v aumu HsLp Hasi
 ```
@@ -67,3 +89,5 @@ Exit codes: **1** for installation/verification errors, **2** for a discovered A
 `scripts/package.sh` creates separate AU, VST3 and combined zip archives with English documentation, screenshots, license notices, installer and AU repair command. Release checksums are generated in `releases/SHA256SUMS.txt`. Source archives are generated from a Git commit. Build caches, local analysis artifacts and plugin binaries are excluded from source control.
 
 Preserve existing VST3 IDs and AU identity (`aumu / HsLp / Hasi`) when publishing updates. Keep the CFBundle versions, editor version label, script release paths and release notes in sync. Developer ID signing and notarization are separate distribution steps and are not part of the current ad-hoc build.
+
+The Windows installer accepts `-Destination` and `-PackageRoot` for isolated tests. Without a destination override it requests administrator access for Common Files/VST3. It stages and verifies the bundle before replacing an existing installation, preserves a timestamped backup and restores it if promotion fails.

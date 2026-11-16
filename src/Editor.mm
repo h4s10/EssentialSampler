@@ -518,7 +518,7 @@ int keyboardPitch(NSEvent* event) {
     line(1115, 764, 1115, 818, 0x444449);
     label([NSString stringWithFormat:@"%d / 16 voices", _model->activeVoices.load()], NSMakeRect(1134, 784, 118, 22), 14, 0xa3a3aa, false, NSTextAlignmentCenter);
     auto status = _model->getStatus();
-    label(status.empty() ? @"Essential Sampler  ·  0.6.2" : [NSString stringWithUTF8String:status.c_str()], NSMakeRect(28, 840, 1180, 16), 10, status.empty() ? 0x65656f : 0xffb58a);
+    label(status.empty() ? @"Essential Sampler  ·  0.7.0" : [NSString stringWithUTF8String:status.c_str()], NSMakeRect(28, 840, 1180, 16), 10, status.empty() ? 0x65656f : 0xffb58a);
 }
 - (void)openFile {
     NSOpenPanel* panel = [NSOpenPanel openPanel]; panel.canChooseDirectories = NO; panel.allowsMultipleSelection = NO;
