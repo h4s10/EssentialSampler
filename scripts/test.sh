@@ -10,7 +10,7 @@ clang++ "${flags[@]}" -fsanitize=address,undefined tests/effects_tests.cpp src/E
 clang++ "${flags[@]}" -fsanitize=address,undefined tests/bandwidth_tests.cpp src/Engine.cpp src/Effects.cpp src/PitchShifter.cpp -framework Accelerate -o build/bandwidth_tests
 ./build/bandwidth_tests
 clang++ "${flags[@]}" -fobjc-arc tests/host_tests.mm src/Engine.cpp src/Effects.cpp src/PitchShifter.cpp -framework Accelerate -framework Cocoa -o build/host_tests
-./build/host_tests "releases/0.6.0/Hasio Loop.vst3/Contents/MacOS/HasioLoop"
+./build/host_tests "releases/0.6.1/Hasio Loop.vst3/Contents/MacOS/HasioLoop"
 python3 - <<'PY'
 import math, struct, wave
 with wave.open('build/test.wav', 'wb') as f:
@@ -29,10 +29,11 @@ clang++ "${flags[@]}" -fobjc-arc tests/ui_smoke.mm build/obj/{Engine,Effects,Pit
 clang++ "${flags[@]}" -fobjc-arc tests/keyboard_tests.mm build/obj/{Engine,Effects,PitchShifter,Editor,AudioFile}.o third_party/flac/lib/libFLAC.a third_party/ogg/lib/libogg.a -framework Cocoa -framework AudioToolbox -framework UniformTypeIdentifiers -framework Accelerate -o build/keyboard_tests
 ./build/keyboard_tests
 clang++ "${flags[@]}" -fobjc-arc tests/au_host_tests.mm src/Engine.cpp src/Effects.cpp src/PitchShifter.cpp -framework Cocoa -framework AudioToolbox -framework Accelerate -o build/au_host_tests
-./build/au_host_tests "$PWD/releases/0.6.0/Hasio Loop.component" --direct
+./build/au_host_tests "$PWD/releases/0.6.1/Hasio Loop.component" --direct
 # Full OS component registration/validation is a separate check on an unrestricted Mac:
-# ./build/au_host_tests "$PWD/releases/0.6.0/Hasio Loop.component" validate
-codesign --verify --strict "releases/0.6.0/Hasio Loop.component"
-codesign --verify --strict "releases/0.6.0/Hasio Loop.vst3"
-codesign --verify --strict "releases/0.6.0/Hasio Loop.app"
+# ./build/au_host_tests "$PWD/releases/0.6.1/Hasio Loop.component" validate
+codesign --verify --strict "releases/0.6.1/Hasio Loop.component"
+codesign --verify --strict "releases/0.6.1/Hasio Loop.vst3"
+codesign --verify --strict "releases/0.6.1/Hasio Loop.app"
+python3 tests/installer_tests.py
 echo 'All checks passed.'

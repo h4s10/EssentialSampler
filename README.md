@@ -1,151 +1,89 @@
-# EssentialSampler — Hasio Loop
+# EssentialSampler
 
-Нативный VST3/AU-семплер для Apple Silicon. Текущая версия: **0.6.0**.
+A native macOS sampler with independent pitch and time controls, hands-on loop editing, distortion and chorus. Available as **VST3**, **Audio Unit (AUv2)** and a standalone app.
 
-Интерфейс использует тёмную минималистичную компоновку по предоставленному референсу: обзорная волна сверху, детальный редактор с синим выделением, Pitch/Time справа и Loop fades/Envelope/Output снизу. Код, графика и встроенный демосемпл созданы для этого проекта. Это самостоятельный семплер: спектральное выделение Iris пока не реализовано.
+The instrument appears in your DAW as **hasio → Hasio Loop**. The existing plugin name and identifiers are retained for session compatibility.
 
-## Релизы и лицензия
+![Hasio Loop sampler interface with waveform overview, loop editor, pitch and time controls, envelopes and keyboard](docs/preview.png)
 
-Исходники: [h4s10/EssentialSampler](https://github.com/h4s10/EssentialSampler). Готовые VST3 и AU: [Releases](https://github.com/h4s10/EssentialSampler/releases).
+[Download v0.6.1](https://github.com/h4s10/EssentialSampler/releases/tag/v0.6.1) · [User guide](docs/USAGE.md) · [Build and test](docs/DEVELOPMENT.md) · [Changelog](CHANGELOG.md)
 
-MIT — можно использовать, изменять и распространять, включая коммерческое использование, сохраняя уведомление об авторстве и лицензию. Лицензии зависимостей перечислены в [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-Название инструмента в DAW пока остаётся **Hasio Loop**, чтобы сохранять совместимость существующих проектов.
+## Requirements and release status
 
-## Logic Pro (Audio Unit)
+- **Apple Silicon (arm64), macOS 27 or newer.** Intel, Windows and older macOS builds are not included.
+- A VST3 host, or Logic Pro / another AUv2 instrument host. The standalone app does not require a DAW.
+- Releases currently use **ad-hoc signatures** and are not Developer ID signed or notarized.
 
-1. Закрой Logic, распакуй AU-архив из Releases и запусти `Install.command` (либо `bash scripts/install-au.command` из исходников после сборки).
-2. Установщик копирует `Hasio Loop.component` в `~/Library/Audio/Plug-Ins/Components`, сохраняет предыдущую версию и запускает `auval -v aumu HsLp Hasi`.
-3. Открой Logic, создай Software Instrument и выбери **AU Instruments → hasio → Hasio Loop → Stereo**.
-4. Если компонент ещё не появился, открой **Logic Pro → Settings → Plug-in Manager**, выбери Hasio Loop и выполни **Reset & Rescan Selection**.
+**This is a prerelease.** DSP, VST3 host, native UI and direct AU interface tests pass. The build environment cannot access the system AudioComponent registry, so Apple `auval` and actual Logic integration have not yet been confirmed. See [verification details](docs/VERIFICATION.md).
 
-Проверены загрузка фактической библиотеки, AU dispatch API, MIDI, автоматизация, состояние и Cocoa-контейнер. Системная регистрация Audio Unit и запуск в Logic не проверены: среда сборки блокирует доступ к реестру AudioComponent. `auval` в установщике проверяет это на целевом Mac. Сборки имеют ad-hoc подпись, без Developer ID и notarization; macOS может потребовать подтверждения открытия загруженного установщика/плагина в Privacy & Security.
+## Install
 
-## Запуск
+1. Download and unzip **AU**, **VST3** or **all** from [Releases](https://github.com/h4s10/EssentialSampler/releases).
+2. Close your DAW and run `Install.command`. Existing plugin versions are backed up beside the installed bundle.
+3. Reopen your DAW. In Logic, create a Software Instrument track and select **AU Instruments → hasio → Hasio Loop → Stereo**. In Ableton Live, enable system VST3 folders and rescan plugins.
 
-- `releases/0.6.0/Hasio Loop.app` — отдельное приложение. Открыть и сыграть на экранной или компьютерной клавиатуре.
-- `releases/0.6.0/Hasio Loop.component` — AUv2-инструмент для Logic Pro.
-- `releases/0.6.0/Hasio Loop.vst3` — инструмент VST3 для DAW.
-- `bash scripts/install-vst3.command` — установка VST3 в пользовательскую папку плагинов. Существующая версия сохраняется рядом как резервная копия.
-- `bash scripts/setup-dev.command` — копирование исходников и релиза в `~/Dev/HasioLoop`; существующая папка не перезаписывается.
-- `bash scripts/update-dev.command` — обновление существующего `~/Dev/HasioLoop` и установка VST3 + AU. Предыдущие исходники и релизы сохраняются в `~/Dev/HasioLoop-backups/`; build-кэш не копируется. Перед обновлением закрой DAW.
+| Download | Contents | Install location |
+| --- | --- | --- |
+| `…-AU.zip` | Audio Unit instrument | `~/Library/Audio/Plug-Ins/Components/Hasio Loop.component` |
+| `…-VST3.zip` | VST3 instrument | `~/Library/Audio/Plug-Ins/VST3/Hasio Loop.vst3` |
+| `…-all.zip` | Both plugins and the standalone app | Plugins as above; open the included `.app` directly |
+| `…-source.zip` | Source and bundled build dependencies | Build locally using the instructions below |
 
-В Ableton включить использование системной папки VST3 и выполнить Rescan. Инструмент: **hasio → Hasio Loop**. В этой сессии проверен собственный VST3-тестовый хост; запуск внутри Ableton ещё не проверен.
+The installer verifies each bundle's signature and identity, removes download quarantine **only from that verified Hasio Loop bundle**, and checks AU registration before running native arm64 `auval`. It does not disable Gatekeeper, delete shared plugin caches or stop your DAW.
 
-Текущие бинарники требуют **macOS 27+, Apple Silicon (arm64)**. Минимальная версия обусловлена локальными сборками FLAC/Ogg. Для macOS 12–26 нужно пересобрать эти две зависимости с соответствующим deployment target и изменить его в `scripts/build.sh`, `scripts/test.sh`, `scripts/bundle_info.py`. Intel и Windows пока не собираются. AUv2 поддерживается с версии 0.6.0.
+### AU installed, but not found
 
-## Возможности
+Version 0.6.0 could immediately run validation before macOS discovered the new component. A message such as `FATAL ERROR: didn't find the component` means discovery failed; audio/DSP validation has not started.
 
-- Загрузка mono/stereo WAV, AIFF и FLAC через Load sample и drag-and-drop.
-- Обзор всей записи, масштабируемая детальная волна, индикатор воспроизведения и пиковый индикатор выхода.
-- Pinch-зум тачпадом с привязкой к курсору; вертикальный скролл меняет масштаб, горизонтальный перемещает область.
-- До 16 MIDI-голосов; Root note, Tune, отдельная крутилка Output, Attack, Release.
-- Tune меняет только питч (±24 полутона), сохраняя скорость и длительность прохода.
-- Keep duration включён по умолчанию: MIDI-ноты также меняют только питч. При выключении MIDI возвращается к классическому изменению скорости семплера; Tune по-прежнему не меняет скорость.
-- Speed от 0.25× до 4× меняет скорость независимо от питча. Length подгоняет выбранный регион под длительность в нотах или тактах по темпу проекта.
-- Перенос всего диапазона лупа с сохранением длины; отдельное редактирование S/E.
-- Fade In и Fade Out от 0 до 1000 мс на границах региона, повторяющиеся каждый цикл. Слайдеры дают больше точности на коротких значениях.
-- VST3/AU-автоматизация 26 действующих параметров. Старый ID Crossfade оставлен скрытым для совместимости. MIDI и точки автоматизации обрабатываются с заданными хостом смещениями внутри аудиоблока.
-- Семпл встраивается в состояние проекта DAW. Исходный файл после сохранения не нужен.
-- Обработка аудиобуферов float32/float64 в VST3 и float32 в AU, стереовыход, MIDI-вход. Фиксированная задержка 2048 отсчётов сообщается хосту: 42,7 мс при 48 kHz, 46,4 мс при 44,1 kHz.
-
-| Режим | Поведение |
-| --- | --- |
-| One-shot | Один проход от Start к End; MIDI Note Off игнорируется. |
-| Forward | Зацикливание вперёд, отпускание MIDI-ноты запускает Release. |
-| Reverse | Зацикливание назад, отпускание MIDI-ноты запускает Release. |
-| Ping-pong | Попеременно вперёд/назад без повторения крайнего отсчёта. |
-| Reverse shot | Один проход от End к Start; MIDI Note Off игнорируется. |
-
-Смена режима останавливает текущие голоса; сыграй ноту заново. Fade In привязан к S, Fade Out — к E; в обратных режимах эти участки проходятся в обратном порядке. Каждый фейд ограничивается половиной региона, чтобы не перекрывать весь короткий луп. Фейды не сокращают период лупа.
-
-## FX
-
-Отдельная вкладка **FX**. Цепочка: сумма голосов → Distortion → Chorus → Output. Выключатели независимы; оба эффекта по умолчанию выключены. Переключение вкладок не выключает звук и не меняет настройки. Двойной клик по слайдеру возвращает исходное значение.
-
-| Эффект | Параметры |
-| --- | --- |
-| Distortion | Type: Tube, Saturate, Clipping, Asymmetrical, Scream, Aliasing; Amount, Tone, Mix (0–100%) |
-| Chorus | Depth, Width, Mix (0–100%); Rate (0.05–5 Hz); Delay (1–30 ms); Feedback (0–90%) |
-
-Tone=50% — нейтральный тембр, ниже — темнее, выше — ярче. Amount=0 при нейтральном Tone оставляет сигнал чистым. Width изменяет ширину обработанной части chorus; при 0% она моно. Уровень Output применяется после всей цепочки, поэтому изменение громкости не меняет силу distortion. Параметры и включение эффектов сглаживаются; Delay/Rate могут давать слышимое изменение высоты при перемещении, как у модулируемой задержки.
-
-В поставленном пользователем Iris 1 исследованы Intel-бинарник, RTTI/строки параметров и руководство. По ним подтверждены семейства эффектов, типы distortion, параметры chorus и последовательность master-цепочки. Полная декомпиляция DSP не выполнена: в REA нет настроенного Ghidra/Hopper/IDA/Kuna. Здесь новая ARM-реализация описанного поведения; точное совпадение звука с Iris не заявляется. Исходные бинарники, изображения и руководство iZotope в релиз не входят.
-
-## Управление
-
-| Действие | Управление |
-| --- | --- |
-| Масштаб | Pinch, вертикальный скролл, кнопки − / + |
-| Перемещение | Горизонтальный скролл с отражённым направлением X, Shift + drag, перемещение рамки в верхней волне |
-| Весь семпл | Fit или двойной клик в редакторе |
-| Перенос региона | Перетащить внутри выделенного лупа; у краёв семпла длина сохраняется |
-| Граница | Перетащить S / E, потянуть снаружи региона либо ввести Start / End в секундах |
-| Длина региона | Ввести Length в секундах; Start сохраняется, End ограничивается концом семпла |
-| Октава клавиатуры | Кнопки − / + слева от клавиатуры; при смене октавы зажатые ноты интерфейса отпускаются |
-| Output | Вертикальный drag по крутилке, Shift для точного изменения |
-| Сброс параметра | Двойной клик по слайдеру или крутилке Output |
-| Скорость | Free в секции Time, затем Speed; двойной клик сбрасывает Speed в 1× |
-| Длительность в темпе | Sync в секции Time, затем 4 bars, 2 bars, 1 bar, 1/2, 1/4, 1/8, 1/16, 1/32 |
-| Темп без хоста | Ввести BPM в поле Tempo; при наличии темпа DAW поле показывает Host tempo и не редактируется |
-| Прослушивание | Экранная или компьютерная клавиатура |
-| Компьютерная клавиатура standalone | `A W S E D F T G Y H U J K O L P ;` без модификаторов, начиная с MIDI 60 при исходной октаве |
-
-В VST3 и AU плагин не забирает клавиатурный фокус при клике: Backspace, Escape, Return/Enter, Space, Tab, стрелки, функциональные клавиши и сочетания остаются у DAW. Для игры буквами в DAW используй её Computer MIDI Keyboard; собственная буквенная раскладка работает только в standalone. При активном редактировании числового поля Backspace удаляет текст, а подтверждение значения возвращает фокус хосту. Плагин не назначает им собственные команды. Caps Lock и другие флаги-модификаторы тоже исключают запуск нот. При потере фокуса окна, переходе в другое приложение и закрытии редактора ноты, запущенные из интерфейса, прекращаются, включая one-shot; MIDI-ноты из DAW остаются независимыми. Обычное отпускание ноты в one-shot по-прежнему не прерывает проход.
-
-## Исправление спектра в 0.5.1
-
-Независимая скорость и Sync теперь анализируют исходный звук до ускоренного чтения, сохраняя верхние частоты. Исправлен случай Reverse + 1/32: трёхсекундный семпл при 120 BPM сжимается в 48 раз, но высокие частоты больше не теряются из-за предварительного ресемплинга. Проверены тоны 1–18 kHz, изменение скорости у уже транспонированной ноты, короткие атаки между окнами анализа и хвосты one-shot при разных размерах аудиоблока. Параметры, формат состояния и заявленная задержка не менялись.
-
-При экстремальном сжатии окна приоритизируют более сильную атаку внутри своего временного интервала; несколько быстрых событий могут сливаться. Это не обещание прозрачного звучания любого материала при ускорении в десятки раз.
-
-## Скорость и музыкальная длительность
-
-В Free скорость 2× сокращает длительность вдвое, 0.5× увеличивает её вдвое. Высота компенсируется pitch shifter; Tune остаётся отдельным управлением высотой.
-
-В Sync длительность относится к региону между S и E. «1 bar» учитывает размер проекта: при 120 BPM это 2 секунды в 4/4, 1,5 секунды в 3/4 и 1,75 секунды в 7/8. Дроби — длительности нот: 1/4 равна одной четвертной доле, 1/8 — половине доли. В Ping-pong заданная длина охватывает полный проход вперёд и назад. Начало звучания задаётся MIDI-нотой, автоматического ожидания ближайшей доли нет.
-
-В синхронном режиме Speed рассчитывается автоматически, а Keep duration принудительно включён: разные MIDI-ноты сохраняют выбранную длительность. После возврата в Free восстанавливаются ранее заданные Speed и Keep duration. Изменения темпа или региона пересчитывают скорость уже звучащих голосов без перезапуска. Если хост не передаёт корректный темп, используется редактируемый BPM (120 по умолчанию), а без размера — 4/4. Standalone также использует этот BPM.
-
-Root note выбирается в выпадающем списке секции Pitch. Это MIDI-номер исходной высоты семпла при Tune = 0. Названия октав в DAW могут отличаться; номер MIDI одинаков. При Keep duration ON все ноты проходят один и тот же регион за одинаковое время. При OFF нота на октаву выше играет вдвое быстрее, но изменение Tune не меняет эту скорость.
-
-Pitch shifting использует стерео phase vocoder с FFT 2048 и перекрытием 8×. Он сохраняет длительность прохода, но может размягчать транзиенты и менять характер звука при сильном транспонировании. После конца прохода может звучать короткий хвост обработки. При нулевом сдвиге сигнал проходит через точную задержку без FFT-преобразования. Задержка остаётся постоянной при переключении Keep duration и Tune; компенсацией на таймлайне управляет DAW, при игре вживую она ощущается.
-
-Состояния 0.1.0 загружаются: старый Crossfade переносится в оба фейда, Keep duration выключен для сохранения прежнего MIDI-поведения. Tune всегда использует новое поведение, поэтому старые проекты с ненулевым Tune будут звучать с другой длительностью. Состояния 0.2.0 тоже загружаются; новые настройки получают значения Speed = 1×, режим Free, BPM = 120. Версия 0.5.0 читает состояния 0.3.0/0.4.0, добавляя выключенные FX. Старые версии плагина состояния 0.5.0 не читают из-за увеличенного числа параметров. Идентификатор плагина и прежних параметров сохранён.
-
-## Разработка
-
-Сборка не требует сети, JUCE, CMake или полного Xcode. Нужны Apple Command Line Tools, Python 3 и macOS 27+ на ARM64. VST3-интерфейсы и статические библиотеки декодирования находятся в `third_party/`.
+Use the **0.6.1 installer**, or run `Repair-AU.command` from its archive to repair the existing installation without replacing the plugin. The repair verifies the installed bundle, handles its quarantine flag, and refreshes the current user's Audio Unit registrar if the component is missing. It then waits briefly for registration and runs:
 
 ```sh
+arch -arm64 auval -v aumu HsLp Hasi
+```
+
+If it remains unregistered, restart your Mac once and try again. Apple also documents this step for newly installed Audio Units: [Plugin discovery troubleshooting](https://support.apple.com/en-gb/122179).
+
+If the component **is listed** but validation fails, keep the validation log printed by the installer and [open an issue](https://github.com/h4s10/EssentialSampler/issues). Repeated cache resets do not resolve a plugin API or rendering failure. If Logic lists the plugin as failed, use **Settings → Plug-in Manager → Reset & Rescan Selection** after resolving the reported error.
+
+## Features
+
+- Load mono/stereo **WAV, AIFF and FLAC** with a file picker or drag and drop.
+- Full-sample overview plus a detailed waveform, movable loop range and editable Start / End / Length fields.
+- Trackpad pinch zoom, vertical scroll zoom and horizontal panning.
+- **One-shot, Forward, Reverse, Ping-pong and Reverse shot** playback modes.
+- **Tune ±24 semitones** without changing playback speed. Keep duration also separates MIDI pitch from playback duration.
+- Independent **0.25×–4× Speed**, or host-synced lengths from **4 bars to 1/32**.
+- Loop Fade In / Fade Out, Attack / Release and a dedicated Output knob.
+- **16 voices**, 26 automatable controls and sample-accurate MIDI/automation offsets.
+- Samples embedded in saved DAW state, so the original audio file is not required when reopening the project.
+- Separate **FX** tab with six distortion types and a stereo chorus. Both effects default to off.
+
+![Hasio Loop FX page with distortion and chorus controls](docs/fx-preview.png)
+
+See the [user guide](docs/USAGE.md) for gestures, timing behavior, effects and compatibility details.
+
+## Current limits
+
+One sample layer and one loop region; fixed 1280 × 860 editor. No spectral selection, spectrogram, filter section, automatic BPM detection, launch quantization, sustain pedal, MPE, pitch bend, preset browser or standalone session saving.
+
+Pitch/time processing reports a fixed **2048-sample latency** (42.7 ms at 48 kHz). Extreme stretching or compression can soften transients or merge nearby events; formants are not preserved. Polyphonic output can exceed 0 dBFS, so adjust Output. Maximum decoded sample size is **192 MiB**, at **8–384 kHz**, mono or stereo. Embedded PCM increases DAW project size.
+
+## Build from source
+
+Install Apple Command Line Tools and Python 3 on an Apple Silicon Mac running macOS 27+. The build uses C++17, Objective-C++, Cocoa, AudioToolbox and Accelerate. No JUCE, CMake, full Xcode installation or network download is required.
+
+```sh
+git clone https://github.com/h4s10/EssentialSampler.git
+cd EssentialSampler
 bash scripts/build.sh
 bash scripts/test.sh
 bash scripts/package.sh
 ```
 
-| Путь | Содержимое |
-| --- | --- |
-| `src/Effects.*` | Distortion, chorus, сглаживание, буферы задержки |
-| `src/Engine.*` | C++ движок, голоса, ресемплинг, лупы, обмен семплами |
-| `src/PitchShifter.*` | Стерео pitch shifting, фиксированная задержка, предвыделенные FFT-буферы |
-| `src/AudioUnit.mm` | AUv2 factory, свойства, параметры, MIDI, рендер и Cocoa view factory |
-| `src/Plugin.mm` | VST3 component/controller, фабрика, шины, автоматизация |
-| `src/Editor.mm` | Нативный Cocoa-интерфейс и жесты |
-| `src/AudioFile.mm` | WAV/AIFF через AudioToolbox, FLAC через libFLAC |
-| `src/State.hpp` | Версионированное сохранение параметров и PCM |
-| `src/Standalone.mm` | Отдельное приложение с Core Audio output |
-| `tests/` | DSP, VST3/AU-хосты, GUI и импорт файлов |
-| `releases/0.6.0/` | Собранные `.vst3`, `.component` и `.app` |
+Bundles are written to `releases/0.6.1/`; zip archives are written to `releases/`. See [development documentation](docs/DEVELOPMENT.md) for architecture, validation and installation commands.
 
-Объекты семплов неизменяемые после публикации. Аудиопоток закрепляет текущий буфер hazard pointer; память выделяется и освобождается вне callback. Очередь экранных MIDI-нот — SPSC. Не вызывай `configure`/`render` после освобождения семпла без нового `setSample`.
+## License and credits
 
-## Границы версии 0.4
+Project code is licensed under **[MIT](LICENSE)**. You may use, modify and distribute it, including commercially, while retaining the copyright and license notice.
 
-Один слой, один регион лупа, линейная интерполяция при ресемплинге, фиксированный интерфейс 1280 × 860. Нет спектрограммы, фильтров, эффектов, автоматического определения исходного BPM, квантования запуска, sustain pedal/MPE/pitch bend, менеджера пресетов или сохранения сессии standalone. При ускорении и классическом транспонировании вверх возможен алиасинг; phase vocoder не сохраняет форманты и не имеет специального режима для транзиентов. Сильное растяжение или сжатие может заметно изменить звук; в Sync необходимая скорость может выходить за диапазон ручного Speed. Сумма полифонии может превысить 0 dBFS — регулируй Output. Максимум PCM-семпла — 192 MiB, 8–384 kHz, один или два канала. При сохранении DAW файл проекта увеличивается на размер PCM.
-
-Релиз подписан локальной ad-hoc подписью и не нотарифицирован. Для публичного распространения потребуется обычная Developer ID подпись и notarization.
-
-## Источники интерфейсов
-
-- [VST3 SDK](https://github.com/steinbergmedia/vst3sdk)
-- [Iris 1 manual — ориентир компоновки](https://help.izotope.com/docs/izotope-iris-help.pdf)
-- См. `THIRD_PARTY_NOTICES.md` для зависимостей и лицензий.
+VST3 interface headers and Xiph FLAC/Ogg dependencies retain their own notices; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Source, artwork and the oscillator-generated demo sample are part of this project. No iZotope binaries, source code, artwork, presets or samples are distributed. This is an independent sampler, not an Iris DSP port or an affiliated iZotope product.

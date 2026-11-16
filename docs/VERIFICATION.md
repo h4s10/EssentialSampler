@@ -1,4 +1,25 @@
-# Verification — 0.6.0
+# Verification — 0.6.1
+
+Build and complete regression suite passed on Apple Silicon, macOS 27.0.1: DSP/FX/bandwidth sanitizers, actual VST3 bundle host, native Cocoa UI/keyboard, file import, AU direct ABI and installer tests. The sampler and FX screenshots were regenerated from the actual native editor in this build, not from a design mockup.
+
+The installer suite first reproduced failures with the 0.6.0 script, then passed with discovery checks, verified-bundle quarantine handling, arm64 execution and bounded registrar retries. A real signed AU bundle with a synthetic quarantine attribute was additionally installed twice in a temporary directory: quarantine removal, unchanged code-signature validity and previous-version backup all passed, with system validation explicitly skipped. The OS registration service is mocked in the service tests: they establish script behavior, not successful Audio Unit registration on the user's machine.
+
+Current build/test commands (the second command exercises the direct ABI, not the system registry):
+
+```sh
+bash scripts/build.sh && bash scripts/test.sh
+./build/au_host_tests "$PWD/releases/0.6.1/Hasio Loop.component" --direct
+```
+
+## Reported 0.6.0 installation failure
+
+The user reported `FATAL ERROR: didn't find the component` after installing the AU release. Read-only inspection confirmed the installed bundle exists, its ad-hoc signature is valid, the executable is arm64 with a macOS 27 minimum, the host runs macOS 27.0.1, and the expected factory/class symbols and AudioComponents metadata are present. The installed bundle retains a `com.apple.quarantine` attribute. The old installer did not handle that attribute or check/wait for registry discovery before invoking validation.
+
+The 0.6.1 installer addresses both installation conditions and provides a repair mode for 0.6.0. **The exact cause of the user's missing registry entry is not yet proven, and target-machine recovery has not been confirmed.** System AudioComponent access and unified logs remain unavailable inside this sandbox. No Logic/auval success is claimed. The local installer or repair command performs the real validation; a missing component produces a separate restart recommendation, while a registered component's validation failure retains its diagnostic log.
+
+All project-facing documentation and release notes are English. README images reference actual checked-in screenshots, also included in binary archives. Historical source tags and older downloaded archives retain their original content.
+
+# Previous verification — 0.6.0
 
 Built on Apple Silicon, macOS 27, Apple clang 21. The existing DSP, FX, bandwidth, actual VST3 host, file loading, Cocoa UI and keyboard regression suite passes. AU uses the same engine/editor with a distinct Objective-C class name.
 

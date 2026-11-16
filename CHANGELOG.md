@@ -1,3 +1,12 @@
+# 0.6.1
+
+- Improved AU installation/discovery: verify bundle identity and signature, remove quarantine only from the verified plugin, check registration before validation, and refresh the current user's registrar only when needed.
+- Run AU listing and validation natively as arm64, with bounded registration retries and separate discovery/validation error messages.
+- Added Repair-AU.command for existing installations; no shared cache deletion or DAW termination.
+- Rewrote README and user/development documentation in English; added actual sampler and FX screenshots to README and release archives.
+- Added installer regressions for discovery, repair, quarantine, signature rejection and real validation failure handling. Audio processing is unchanged.
+- Actual system AU/Logic validation is still pending because the build sandbox cannot access the registry; this remains a prerelease.
+
 # 0.6.0
 
 - Added native AUv2 `.component` instrument for Logic Pro (aumu / HsLp / Hasi), alongside VST3 and standalone.

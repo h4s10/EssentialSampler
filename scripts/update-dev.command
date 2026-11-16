@@ -2,9 +2,9 @@
 set -euo pipefail
 project="$(cd "$(dirname "$0")/.." && pwd -P)"
 target="${HASIO_DEV_DIR:-$HOME/Dev/HasioLoop}"
-source_bundle="$project/releases/0.6.0/Hasio Loop.vst3"
+source_bundle="$project/releases/0.6.1/Hasio Loop.vst3"
 if [[ ! -f "$source_bundle/Contents/MacOS/HasioLoop" ]]; then
-    echo 'Release 0.6.0 is missing. Run bash scripts/build.sh first.'; exit 1
+    echo 'Release 0.6.1 is missing. Run bash scripts/build.sh first.'; exit 1
 fi
 codesign --verify --strict "$source_bundle"
 mkdir -p "$target"
@@ -19,4 +19,4 @@ if [[ "$target" != "$project" ]]; then
     /usr/bin/rsync -a --exclude='/build/' --exclude='/.git/' --exclude='.DS_Store' "$project/" "$target/"
     echo "Updated project: $target"
 fi
-HASIO_RELEASE_DIR="$target/releases/0.6.0" bash "$target/scripts/install-release.command"
+HASIO_RELEASE_DIR="$target/releases/0.6.1" bash "$target/scripts/install-release.command"

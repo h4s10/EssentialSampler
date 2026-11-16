@@ -262,7 +262,7 @@ public:
     tresult PLUGIN_API getClassInfo2(int32 index, PClassInfo2* info) override {
         if (index || !info) return kInvalidArgument; *info = {}; std::memcpy(info->cid, componentId, 16);
         info->cardinality = PClassInfo::kManyInstances; ascii(info->category, kVstAudioEffectClass); ascii(info->name, "Hasio Loop");
-        ascii(info->subCategories, "Instrument|Sampler"); ascii(info->vendor, "hasio"); ascii(info->version, "0.6.0"); ascii(info->sdkVersion, "VST 3.8.0"); return kResultOk;
+        ascii(info->subCategories, "Instrument|Sampler"); ascii(info->vendor, "hasio"); ascii(info->version, "0.6.1"); ascii(info->sdkVersion, "VST 3.8.0"); return kResultOk;
     }
     tresult PLUGIN_API createInstance(FIDString cid, FIDString iid, void** out) override {
         if (!out) return kInvalidArgument; *out = nullptr; if (!same(cid, componentId)) return kNoInterface;
