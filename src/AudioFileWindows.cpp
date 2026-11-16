@@ -96,7 +96,8 @@ std::shared_ptr<Sample> allocateSample(uint64_t frames, double rate) {
     sample->left.resize(static_cast<size_t>(frames)); sample->right.resize(static_cast<size_t>(frames));
     return sample;
 }
-void copyFrames(Sample& sample, size_t offset, const float* source, size_t frames, unsigned channels) {
+template<typename T>
+void copyFrames(Sample& sample, size_t offset, const T* source, size_t frames, unsigned channels) {
     for (size_t i = 0; i < frames; ++i) {
         sample.left[offset + i] = clean(source[i * channels]);
         sample.right[offset + i] = clean(source[i * channels + channels - 1]);
@@ -154,12 +155,23 @@ std::shared_ptr<Sample> loadWav(File& file, const uint8_t* header, std::string& 
     if (!validFormat(decoder.channels, decoder.sampleRate, decoder.totalPCMFrameCount, error)) return {};
     auto sample = allocateSample(decoder.totalPCMFrameCount, decoder.sampleRate);
     std::array<float, 8192> scratch{};
+    std::array<double, 8192> wideScratch{};
     for (size_t offset = 0; offset < sample->frames();) {
         const size_t count = std::min<size_t>(4096, sample->frames() - offset);
-        if (drwav_read_pcm_frames_f32(&decoder, count, scratch.data()) != count || file.readError) {
-            error = damagedError; return {};
+        if (floating && bits == 64) {
+            // Keep finite doubles finite until clamping: conversion to float
+            // first would turn very large finite samples into infinity/silence.
+            if (drwav_read_pcm_frames(&decoder, count, wideScratch.data()) != count || file.readError) {
+                error = damagedError; return {};
+            }
+            copyFrames(*sample, offset, wideScratch.data(), count, decoder.channels);
+        } else {
+            if (drwav_read_pcm_frames_f32(&decoder, count, scratch.data()) != count || file.readError) {
+                error = damagedError; return {};
+            }
+            copyFrames(*sample, offset, scratch.data(), count, decoder.channels);
         }
-        copyFrames(*sample, offset, scratch.data(), count, decoder.channels); offset += count;
+        offset += count;
     }
     return sample;
 }

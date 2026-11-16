@@ -24,6 +24,7 @@ constexpr wchar_t editorClass[] = L"EssentialSampler.Editor.0.7";
 constexpr wchar_t ownerProperty[] = L"EssentialSampler.EditOwner";
 constexpr wchar_t procProperty[] = L"EssentialSampler.EditProc";
 constexpr UINT_PTR refreshTimer = 1;
+struct EditorClassRegistration { std::mutex mutex; size_t owners = 0; } classRegistration;
 constexpr unsigned blue = 0x0a84ff, foreground = 0xf2f2f5, muted = 0xa3a3aa;
 constexpr uint32_t sliderParams[] = { Tune, FadeIn, FadeOut, Attack, Release };
 constexpr uint32_t fxParams[] = { DistAmount, DistTone, DistMix, ChorusDepth,
@@ -136,8 +137,8 @@ HINSTANCE moduleInstance() {
 
 struct WindowsEditor::Impl {
     std::shared_ptr<Model> model;
-    bool hosted = false, fxTab = false, detached = true, committing = false;
-    HWND window = nullptr, previousFocus = nullptr;
+    bool hosted = false, fxTab = false, detached = true, committing = false, ownsClass = false;
+    HWND window = nullptr, previousFocus = nullptr, skipKillFocus = nullptr;
     std::array<HWND, 4> fields{};
     std::array<HFONT, 32> regular{}, bold{};
     HBRUSH fieldBrush = nullptr;
@@ -240,6 +241,11 @@ struct WindowsEditor::Impl {
         if (loader.joinable()) loader.join();
         if (job) { model->loading.store(false); job.reset(); }
         if (window) { HWND old = window; KillTimer(old, refreshTimer); DragAcceptFiles(old, FALSE); DestroyWindow(old); window = nullptr; }
+        if (ownsClass) {
+            std::lock_guard<std::mutex> lock(classRegistration.mutex);
+            if (--classRegistration.owners == 0) UnregisterClassW(editorClass, moduleInstance());
+            ownsClass = false;
+        }
         fields.fill(nullptr); begin = {}; change = {}; end = {}; dirty = {};
     }
     bool attach(HWND parent) {
@@ -247,12 +253,16 @@ struct WindowsEditor::Impl {
         if (!parent || !IsWindow(parent)) return false;
         WNDCLASSEXW wc{}; wc.cbSize = sizeof(wc); wc.style = CS_DBLCLKS;
         wc.lpfnWndProc = windowProc; wc.hInstance = moduleInstance(); wc.hCursor = LoadCursorW(nullptr, IDC_ARROW); wc.lpszClassName = editorClass;
-        if (!RegisterClassExW(&wc) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) return false;
+        if (!ownsClass) {
+            std::lock_guard<std::mutex> lock(classRegistration.mutex);
+            if (!classRegistration.owners && !RegisterClassExW(&wc) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) return false;
+            ++classRegistration.owners; ownsClass = true;
+        }
         detached = false;
         window = CreateWindowExW(WS_EX_CONTROLPARENT, editorClass, L"Essential Sampler sample editor",
             WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0, 0, editorWidth, editorHeight,
             parent, nullptr, wc.hInstance, this);
-        if (!window) { detached = true; return false; }
+        if (!window) { detach(); return false; }
         const Rect locations[] = {{76, 496, 102, 30}, {236, 496, 102, 30}, {416, 496, 102, 30}, {1153, 526, 99, 28}};
         fieldBrush = fieldBrush ? fieldBrush : CreateSolidBrush(colour(0x29292c));
         for (int i = 0; i < 4; ++i) {
@@ -265,6 +275,7 @@ struct WindowsEditor::Impl {
             SetPropW(fields[i], ownerProperty, this);
             auto previous = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(fields[i], GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(fieldProc)));
             SetPropW(fields[i], procProperty, reinterpret_cast<HANDLE>(previous));
+            if (fxTab) ShowWindow(fields[i], SW_HIDE);
         }
         DragAcceptFiles(window, TRUE);
         GESTURECONFIG gc[] = {{GID_ZOOM, GC_ZOOM, 0}, {GID_PAN, GC_PAN_WITH_SINGLE_FINGER_HORIZONTALLY | GC_PAN_WITH_INERTIA, GC_PAN_WITH_SINGLE_FINGER_VERTICALLY}};
@@ -285,6 +296,7 @@ struct WindowsEditor::Impl {
             if (msg == WM_KEYDOWN && (w == VK_RETURN || w == VK_ESCAPE)) {
                 if (w == VK_RETURN) self->commitField(field);
                 else self->refreshFields(field);
+                self->skipKillFocus = field;
                 self->releaseFocus(); return 0;
             }
             if (msg == WM_CHAR && (w == VK_RETURN || w == VK_ESCAPE)) return 0;
@@ -665,7 +677,11 @@ struct WindowsEditor::Impl {
             case WM_CTLCOLOREDIT: case WM_CTLCOLORSTATIC:
                 SetTextColor(reinterpret_cast<HDC>(w), colour(foreground)); SetBkColor(reinterpret_cast<HDC>(w), colour(0x29292c)); return reinterpret_cast<LRESULT>(fieldBrush);
             case WM_COMMAND:
-                if (HIWORD(w) == EN_KILLFOCUS && LOWORD(w) >= 100 && LOWORD(w) < 104 && !detached) commitField(reinterpret_cast<HWND>(l));
+                if (HIWORD(w) == EN_KILLFOCUS && LOWORD(w) >= 100 && LOWORD(w) < 104 && !detached) {
+                    HWND field = reinterpret_cast<HWND>(l);
+                    if (skipKillFocus == field) skipKillFocus = nullptr;
+                    else commitField(field);
+                }
                 return 0;
             case WM_MOUSEACTIVATE: return hosted ? MA_NOACTIVATE : MA_ACTIVATE;
             case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK: mouseDown({GET_X_LPARAM(l), GET_Y_LPARAM(l)}, msg == WM_LBUTTONDBLCLK); return 0;

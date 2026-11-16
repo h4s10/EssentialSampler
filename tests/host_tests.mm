@@ -304,6 +304,26 @@ int main(int argc, char** argv) {
         control->release(); processor->release(); comp->release(); factory->release(); assert(exit());
 #ifdef _WIN32
         assert(FreeLibrary(handle));
+        // Reopening a DLL in the same host must not reuse a window class whose
+        // procedure pointed into the unloaded module.
+        handle = LoadLibraryA(argv[1]); assert(handle);
+        auto reentry = reinterpret_cast<bool (*)()>(GetProcAddress(handle, "InitDll"));
+        auto reexit = reinterpret_cast<bool (*)()>(GetProcAddress(handle, "ExitDll"));
+        auto refactory = reinterpret_cast<IPluginFactory* (*)()>(GetProcAddress(handle, "GetPluginFactory"));
+        assert(reentry && reexit && refactory && reentry());
+        factory = refactory(); comp = nullptr; control = nullptr;
+        assert(factory->createInstance(info.cid, IComponent_iid, reinterpret_cast<void**>(&comp)) == kResultOk);
+        assert(comp->initialize(nullptr) == kResultOk);
+        assert(comp->queryInterface(IEditController_iid, reinterpret_cast<void**>(&control)) == kResultOk);
+        editor = control->createView(ViewType::kEditor); assert(editor);
+        assert(RegisterClassW(&wc));
+        parent = CreateWindowW(wc.lpszClassName, L"Reopened host", WS_OVERLAPPEDWINDOW,
+            0, 0, size.getWidth(), size.getHeight(), nullptr, nullptr, wc.hInstance, nullptr);
+        assert(parent && editor->attached(parent, kPlatformTypeHWND) == kResultOk);
+        assert(editor->removed() == kResultOk); editor->release();
+        DestroyWindow(parent); UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        comp->terminate(); control->release(); comp->release(); factory->release();
+        assert(reexit() && FreeLibrary(handle));
 #endif
         // Cocoa classes remain resident until process exit on macOS.
         std::cout << "PASS: native VST3 load, factory, single component/controller, stereo/MIDI buses, 32/64-bit render, sample-accurate note and automation offsets, portable state, malformed state, editor lifecycle\n";

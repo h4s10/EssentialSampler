@@ -25,7 +25,7 @@ target_link_libraries(pitch_benchmark PRIVATE sampler_core)
 include(CTest)
 if(BUILD_TESTING)
     foreach(suite IN ITEMS engine effects bandwidth fft audio_file windows_host windows_ui)
-        add_executable(${suite}_tests tests/${suite}_tests.cpp)
+        add_executable(${suite}_tests tests/${suite}_tests.cpp tests/windows_test_setup.cpp)
         target_link_libraries(${suite}_tests PRIVATE sampler_core)
         if(MSVC)
             # Test assertions must remain active in a Release configuration.
