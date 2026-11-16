@@ -10,7 +10,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 
 class InstallerTests(unittest.TestCase):
-    def run_installer(self, *, scenario='stale', repair=False, bad_signature=False, bad_identity=False, quarantined=True):
+    def run_installer(self, *, scenario='stale', repair=False, bad_signature=False, bad_identity=False, quarantined=True, legacy=False, existing_new=False, fail_install=False):
         temp = tempfile.TemporaryDirectory(prefix='hasio-installer-')
         self.addCleanup(temp.cleanup)
         base = Path(temp.name)
@@ -18,16 +18,24 @@ class InstallerTests(unittest.TestCase):
         source = base / 'release'
         destination = base / 'Components'
         source.mkdir(); destination.mkdir()
-        bundle = (destination if repair else source) / 'Hasio Loop.component'
+        bundle = (destination if repair else source) / 'Essential Sampler.component'
         (bundle / 'Contents/MacOS').mkdir(parents=True)
-        (bundle / 'Contents/MacOS/HasioLoop').write_text('fixture')
+        (bundle / 'Contents/MacOS/EssentialSampler').write_text('fixture')
         (bundle / 'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier': 'other.plugin' if bad_identity else 'audio.hasio.loop.au'}))
+        for old_name, enabled in [('Hasio Loop', legacy), ('Essential Sampler', existing_new)]:
+            if enabled:
+                old = destination / (old_name + '.component')
+                (old / 'Contents').mkdir(parents=True, exist_ok=True)
+                (old / 'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier': 'audio.hasio.loop.au'}))
+                (old / 'previous.txt').write_text(old_name)
         commands = base / 'bin'; commands.mkdir()
         log = base / 'commands.log'
         def mock(name, body):
             f = commands / name
             f.write_text('#!/bin/bash\nset -eu\nprintf "%s\\n" "'+name+' $*" >> "$TEST_LOG"\n'+body+'\n')
             f.chmod(0o755)
+        mock('mv', '''if [[ "${TEST_FAIL_INSTALL:-0}" == 1 && "$1" == *'.EssentialSampler-install.'* ]]; then exit 1; fi
+exec /bin/mv "$@"''')
         mock('codesign', 'exit "${TEST_BAD_SIGNATURE:-0}"')
         mock('xattr', 'if [[ "$1" == -r ]]; then\n  [[ -e "$TEST_BASE/cleared" ]] || echo "com.apple.quarantine: downloaded"\nelse\n  touch "$TEST_BASE/cleared"\nfi')
         mock('killall', 'touch "$TEST_BASE/refreshed"')
@@ -37,13 +45,13 @@ class InstallerTests(unittest.TestCase):
   if [[ "$TEST_SCENARIO" == missing ]]; then exit 0; fi
   if [[ "$TEST_SCENARIO" == stale && ! -e "$TEST_BASE/refreshed" ]]; then exit 0; fi
   [[ -e "$TEST_BASE/cleared" ]] || exit 0
-  echo 'aumu HsLp Hasi - hasio: Hasio Loop'
+  echo 'aumu HsLp Hasi - hasio: Essential Sampler'
 else
   [[ "$TEST_SCENARIO" != invalid ]] || { echo 'FATAL ERROR: Initialize failed'; exit 1; }
   echo 'AU VALIDATION SUCCEEDED.'
 fi''')
         env = dict(os.environ, PATH=str(commands)+':'+os.environ['PATH'], TEST_BASE=str(base), TEST_LOG=str(log),
-                   TEST_SCENARIO=scenario, TEST_BAD_SIGNATURE='1' if bad_signature else '0',
+                   TEST_SCENARIO=scenario, TEST_FAIL_INSTALL='1' if fail_install else '0', TEST_BAD_SIGNATURE='1' if bad_signature else '0',
                    HASIO_RELEASE_DIR=str(source), HASIO_AU_DIR=str(destination))
         env.pop('HASIO_SKIP_AUVAL', None)
         args = ['bash', str(ROOT/'scripts/install-release.command')]
@@ -57,7 +65,7 @@ fi''')
         self.assertIn('xattr -dr com.apple.quarantine', log)
         self.assertIn('killall -u ', log)
         self.assertIn('arch -arm64 auval -v aumu HsLp Hasi', log)
-        self.assertTrue((destination/'Hasio Loop.component').exists())
+        self.assertTrue((destination/'Essential Sampler.component').exists())
         self.assertLess(log.index('codesign '), log.index('xattr -dr'))
 
     def test_registered_plugin_does_not_restart_registrar(self):
@@ -95,6 +103,23 @@ fi''')
         self.assertIn('Unexpected bundle identity', result.stdout)
         self.assertNotIn('xattr ', log)
         self.assertNotIn('killall ', log)
+
+    def test_legacy_bundle_is_backed_up_and_registry_name_refreshed(self):
+        result, log, destination = self.run_installer(scenario='registered', legacy=True)
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        self.assertTrue((destination/'Essential Sampler.component').is_dir())
+        self.assertFalse((destination/'Hasio Loop.component').exists())
+        old=list(destination.glob('Hasio Loop.component.backup-*'))
+        self.assertEqual(len(old),1)
+        self.assertEqual((old[0]/'previous.txt').read_text(),'Hasio Loop')
+        self.assertIn('killall -u ',log)
+
+    def test_failed_rename_install_restores_both_existing_bundles(self):
+        result, log, destination = self.run_installer(legacy=True,existing_new=True,fail_install=True)
+        self.assertNotEqual(result.returncode,0)
+        for name in ['Hasio Loop','Essential Sampler']:
+            self.assertEqual((destination/(name+'.component')/'previous.txt').read_text(),name)
+        self.assertNotIn('auval -v ',log)
 
     def test_invalid_signature_is_not_unquarantined(self):
         result, log, _ = self.run_installer(bad_signature=True)

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 project="$(cd "$(dirname "$0")/.." && pwd -P)"
-target="$HOME/Dev/HasioLoop"
+target="${HASIO_DEV_DIR:-$HOME/Dev/EssentialSampler}"
 if [[ "$project" == "$target" ]]; then
     echo "Project is already at $target"
     exit 0

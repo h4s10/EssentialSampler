@@ -364,7 +364,7 @@ __attribute__((visibility("default")))
 @end
 @implementation HasioLoopAUViewFactory
 - (unsigned)interfaceVersion {return 0;}
-- (NSString*)description {return @"Hasio Loop";}
+- (NSString*)description {return @"Essential Sampler";}
 - (NSView*)uiViewForAudioUnit:(AudioUnit)unit withSize:(NSSize)size {
     std::shared_ptr<au::Context> context;UInt32 bytes=sizeof(context);
     if(AudioUnitGetProperty(unit,au::editorContextProperty,0,0,&context,&bytes)!=noErr||!context)return nil;

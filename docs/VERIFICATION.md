@@ -1,4 +1,12 @@
-# Verification — 0.6.1
+# Verification — 0.6.2
+
+This update changes the displayed product name to Essential Sampler, bundle/executable filenames and upgrade handling. Audio processing and saved-state/parameter identities are unchanged. The user reported the preceding installation working; independent system-registry/Logic validation remains unavailable in this build sandbox.
+
+The existing installer suite was extended with legacy-name migration and rollback tests. The original script fails against renamed release bundles; the new script installs the renamed bundle, preserves the old one as an unscanned backup, refreshes AU metadata after migration, and restores both original names on a forced replacement failure. The full DSP, FX, bandwidth, actual VST3 host, direct AU ABI, native UI/keyboard and installer suite passed. Bundle metadata checks confirm the new display/executable names with unchanged bundle IDs, VST3 class ID and AU identity. Both Sampler and FX screenshots were regenerated and visually checked with the new Essential Sampler header.
+
+Current artifacts: `releases/0.6.2/Essential Sampler.{vst3,component,app}`. Run `bash scripts/build.sh`, `bash scripts/test.sh` and `bash scripts/package.sh`.
+
+# Previous verification — 0.6.1
 
 Build and complete regression suite passed on Apple Silicon, macOS 27.0.1: DSP/FX/bandwidth sanitizers, actual VST3 bundle host, native Cocoa UI/keyboard, file import, AU direct ABI and installer tests. The sampler and FX screenshots were regenerated from the actual native editor in this build, not from a design mockup.
 

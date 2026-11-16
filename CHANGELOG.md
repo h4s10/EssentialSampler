@@ -1,3 +1,11 @@
+# 0.6.2
+
+- Renamed the instrument to **Essential Sampler** in the editor, accessibility labels, DAW listings, standalone window/menu, bundle names and executable filenames.
+- VST3 class ID, AU type/subtype/manufacturer, bundle identifiers, parameter IDs and saved-state format remain unchanged.
+- Installer migrates Hasio Loop bundles to backups instead of leaving duplicate plugin identities installed; restores both old and new bundles if replacement fails. Refreshes AU registration after a legacy-name migration.
+- Updated English documentation and regenerated actual Sampler/FX screenshots with the new title.
+- No DSP or parameter behavior changes.
+
 # 0.6.1
 
 - Improved AU installation/discovery: verify bundle identity and signature, remove quarantine only from the verified plugin, check registration before validation, and refresh the current user's registrar only when needed.

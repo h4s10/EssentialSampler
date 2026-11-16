@@ -1,12 +1,12 @@
-# EssentialSampler
+# Essential Sampler
 
 A native macOS sampler with independent pitch and time controls, hands-on loop editing, distortion and chorus. Available as **VST3**, **Audio Unit (AUv2)** and a standalone app.
 
-The instrument appears in your DAW as **hasio → Hasio Loop**. The existing plugin name and identifiers are retained for session compatibility.
+The instrument appears in your DAW as **hasio → Essential Sampler**. Previously released as Hasio Loop; internal plugin and parameter identifiers are unchanged so hosts can recognize existing sessions after rescanning.
 
-![Hasio Loop sampler interface with waveform overview, loop editor, pitch and time controls, envelopes and keyboard](docs/preview.png)
+![Essential Sampler sampler interface with waveform overview, loop editor, pitch and time controls, envelopes and keyboard](docs/preview.png)
 
-[Download v0.6.1](https://github.com/h4s10/EssentialSampler/releases/tag/v0.6.1) · [User guide](docs/USAGE.md) · [Build and test](docs/DEVELOPMENT.md) · [Changelog](CHANGELOG.md)
+[Download v0.6.2](https://github.com/h4s10/EssentialSampler/releases/tag/v0.6.2) · [User guide](docs/USAGE.md) · [Build and test](docs/DEVELOPMENT.md) · [Changelog](CHANGELOG.md)
 
 ## Requirements and release status
 
@@ -20,22 +20,22 @@ The instrument appears in your DAW as **hasio → Hasio Loop**. The existing plu
 
 1. Download and unzip **AU**, **VST3** or **all** from [Releases](https://github.com/h4s10/EssentialSampler/releases).
 2. Close your DAW and run `Install.command`. Existing plugin versions are backed up beside the installed bundle.
-3. Reopen your DAW. In Logic, create a Software Instrument track and select **AU Instruments → hasio → Hasio Loop → Stereo**. In Ableton Live, enable system VST3 folders and rescan plugins.
+3. Reopen your DAW. In Logic, create a Software Instrument track and select **AU Instruments → hasio → Essential Sampler → Stereo**. In Ableton Live, enable system VST3 folders and rescan plugins.
 
 | Download | Contents | Install location |
 | --- | --- | --- |
-| `…-AU.zip` | Audio Unit instrument | `~/Library/Audio/Plug-Ins/Components/Hasio Loop.component` |
-| `…-VST3.zip` | VST3 instrument | `~/Library/Audio/Plug-Ins/VST3/Hasio Loop.vst3` |
+| `…-AU.zip` | Audio Unit instrument | `~/Library/Audio/Plug-Ins/Components/Essential Sampler.component` |
+| `…-VST3.zip` | VST3 instrument | `~/Library/Audio/Plug-Ins/VST3/Essential Sampler.vst3` |
 | `…-all.zip` | Both plugins and the standalone app | Plugins as above; open the included `.app` directly |
 | `…-source.zip` | Source and bundled build dependencies | Build locally using the instructions below |
 
-The installer verifies each bundle's signature and identity, removes download quarantine **only from that verified Hasio Loop bundle**, and checks AU registration before running native arm64 `auval`. It does not disable Gatekeeper, delete shared plugin caches or stop your DAW.
+The installer verifies each bundle's signature and identity, removes download quarantine **only from that verified Essential Sampler bundle**, and checks AU registration before running native arm64 `auval`. It does not disable Gatekeeper, delete shared plugin caches or stop your DAW.
 
 ### AU installed, but not found
 
 Version 0.6.0 could immediately run validation before macOS discovered the new component. A message such as `FATAL ERROR: didn't find the component` means discovery failed; audio/DSP validation has not started.
 
-Use the **0.6.1 installer**, or run `Repair-AU.command` from its archive to repair the existing installation without replacing the plugin. The repair verifies the installed bundle, handles its quarantine flag, and refreshes the current user's Audio Unit registrar if the component is missing. It then waits briefly for registration and runs:
+Use the **0.6.2 installer**, or run `Repair-AU.command` from its archive to repair the existing installation without replacing the plugin. The repair verifies the installed bundle, handles its quarantine flag, and refreshes the current user's Audio Unit registrar if the component is missing. It then waits briefly for registration and runs:
 
 ```sh
 arch -arm64 auval -v aumu HsLp Hasi
@@ -44,6 +44,12 @@ arch -arm64 auval -v aumu HsLp Hasi
 If it remains unregistered, restart your Mac once and try again. Apple also documents this step for newly installed Audio Units: [Plugin discovery troubleshooting](https://support.apple.com/en-gb/122179).
 
 If the component **is listed** but validation fails, keep the validation log printed by the installer and [open an issue](https://github.com/h4s10/EssentialSampler/issues). Repeated cache resets do not resolve a plugin API or rendering failure. If Logic lists the plugin as failed, use **Settings → Plug-in Manager → Reset & Rescan Selection** after resolving the reported error.
+
+## Updating from Hasio Loop
+
+Use `Install.command` from the new release with your DAW closed. It installs **Essential Sampler.vst3** / **Essential Sampler.component** and backs up the old Hasio Loop bundles outside their scanned file extensions. This prevents duplicate plugins with the same internal identity. Reopen or rescan your DAW to refresh the displayed name.
+
+Existing project folders do not need to be renamed. No audio settings or sample-state format have changed.
 
 ## Features
 
@@ -58,7 +64,7 @@ If the component **is listed** but validation fails, keep the validation log pri
 - Samples embedded in saved DAW state, so the original audio file is not required when reopening the project.
 - Separate **FX** tab with six distortion types and a stereo chorus. Both effects default to off.
 
-![Hasio Loop FX page with distortion and chorus controls](docs/fx-preview.png)
+![Essential Sampler FX page with distortion and chorus controls](docs/fx-preview.png)
 
 See the [user guide](docs/USAGE.md) for gestures, timing behavior, effects and compatibility details.
 
@@ -80,7 +86,7 @@ bash scripts/test.sh
 bash scripts/package.sh
 ```
 
-Bundles are written to `releases/0.6.1/`; zip archives are written to `releases/`. See [development documentation](docs/DEVELOPMENT.md) for architecture, validation and installation commands.
+Bundles are written to `releases/0.6.2/`; zip archives are written to `releases/`. See [development documentation](docs/DEVELOPMENT.md) for architecture, validation and installation commands.
 
 ## License and credits
 

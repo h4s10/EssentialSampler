@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
         auto getFactory = reinterpret_cast<IPluginFactory* (*)()>(dlsym(handle, "GetPluginFactory")); assert(getFactory);
         auto factory = getFactory(); assert(factory && factory->countClasses() == 1);
         PClassInfo info{}; assert(factory->getClassInfo(0, &info) == kResultOk);
-        assert(std::string(info.name) == "Hasio Loop");
+        assert(std::string(info.name) == "Essential Sampler");
         IPluginFactory2* f2 = nullptr; assert(factory->queryInterface(IPluginFactory2_iid, reinterpret_cast<void**>(&f2)) == kResultOk);
         PClassInfo2 info2{}; assert(f2->getClassInfo2(0, &info2) == kResultOk); assert(std::string(info2.subCategories) == "Instrument|Sampler"); f2->release();
         IComponent* comp = nullptr;

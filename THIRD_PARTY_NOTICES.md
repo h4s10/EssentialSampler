@@ -6,7 +6,7 @@
 Copied unchanged from the locally available `NativePluginConverter/native/third_party/pluginterfaces` at project revision `12198e85372566ed2f94696c316ae39ea666bef4`.
 Upstream: https://github.com/steinbergmedia/vst3_pluginterfaces
 License: MIT, preserved in `third_party/pluginterfaces/LICENSE.txt` and in each release bundle.
-No converter/bridge implementation code is used by Hasio Loop.
+No converter/bridge implementation code is used by Essential Sampler.
 
 ## libFLAC 1.5.0 and libogg 1.3.6
 

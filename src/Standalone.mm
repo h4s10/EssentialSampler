@@ -34,9 +34,9 @@ static OSStatus renderAudio(void* context, AudioUnitRenderActionFlags*, const Au
     (void)notification;
     _model = std::make_shared<Model>(); _engine.prepare(48000);
     NSMenu* menu = [NSMenu new]; NSMenuItem* appItem = [NSMenuItem new]; [menu addItem:appItem];
-    NSMenu* sub = [NSMenu new]; [sub addItemWithTitle:@"Quit Hasio Loop" action:@selector(terminate:) keyEquivalent:@"q"]; appItem.submenu = sub; NSApp.mainMenu = menu;
+    NSMenu* sub = [NSMenu new]; [sub addItemWithTitle:@"Quit Essential Sampler" action:@selector(terminate:) keyEquivalent:@"q"]; appItem.submenu = sub; NSApp.mainMenu = menu;
     _window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, editorWidth, editorHeight) styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable backing:NSBackingStoreBuffered defer:NO];
-    _window.title = @"Hasio Loop"; _window.delegate = self; _window.releasedWhenClosed = NO;
+    _window.title = @"Essential Sampler"; _window.delegate = self; _window.releasedWhenClosed = NO;
     _view = [[HLView alloc] initWithModel:_model]; _window.contentView = _view;
     [_window center]; [_window makeKeyAndOrderFront:nil]; [NSApp activateIgnoringOtherApps:YES];
     AudioComponentDescription desc{}; desc.componentType = kAudioUnitType_Output; desc.componentSubType = kAudioUnitSubType_DefaultOutput; desc.componentManufacturer = kAudioUnitManufacturer_Apple;

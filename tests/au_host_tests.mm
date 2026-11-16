@@ -88,7 +88,7 @@ int main(int argc,char**argv){@autoreleasepool{
     AudioComponentDescription d{kAudioUnitType_MusicDevice,'HsLp','Hasi',kAudioComponentFlag_SandboxSafe,0};
     AudioComponent c=nullptr;AudioUnit u=nullptr;
     if(direct){auto* h=factory(&d);assert(h);AudioComponentInstance testInstance=nullptr;ok(h->Open(h,testInstance));u=reinterpret_cast<AudioUnit>(h);}
-    else{c=AudioComponentRegister(&d,CFSTR("hasio: Hasio Loop"),0x000600,factory);if(!c){fprintf(stderr,"AudioComponent registry unavailable; run --direct for ABI tests or run this host outside the sandbox.\n");return 77;}ok(AudioComponentInstanceNew(c,&u));}
+    else{c=AudioComponentRegister(&d,CFSTR("hasio: Essential Sampler"),0x000602,factory);if(!c){fprintf(stderr,"AudioComponent registry unavailable; run --direct for ABI tests or run this host outside the sandbox.\n");return 77;}ok(AudioComponentInstanceNew(c,&u));}
     assert(get<UInt32>(u,kAudioUnitProperty_ElementCount,kAudioUnitScope_Input)==0);
     assert(get<UInt32>(u,kAudioUnitProperty_ElementCount,kAudioUnitScope_Output)==1);
     UInt32 size=0;Boolean writable=true;

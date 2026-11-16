@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version=0.6.1
+version=0.6.2
 folder="releases/$version"
-for extension in vst3 component app; do codesign --verify --strict "$folder/Hasio Loop.$extension"; done
+for extension in vst3 component app; do codesign --verify --strict "$folder/Essential Sampler.$extension"; done
 cp README.md CHANGELOG.md THIRD_PARTY_NOTICES.md LICENSE "$folder/"
 cp scripts/install-release.command "$folder/Install.command"
 cp scripts/repair-au.command "$folder/Repair-AU.command"
@@ -18,7 +18,7 @@ for format in VST3 AU; do
     name="EssentialSampler-$version-macOS27-arm64-$format"
     mkdir -p "$stage/$name"
     extension=vst3; if [[ "$format" == AU ]]; then extension=component; fi
-    ditto "$folder/Hasio Loop.$extension" "$stage/$name/Hasio Loop.$extension"
+    ditto "$folder/Essential Sampler.$extension" "$stage/$name/Essential Sampler.$extension"
     cp "$folder/"{README.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md,LICENSE,Install.command,Repair-AU.command} "$stage/$name/"
     ditto "$folder/docs" "$stage/$name/docs"
     ditto -c -k --sequesterRsrc --keepParent "$stage/$name" "releases/$name.zip"

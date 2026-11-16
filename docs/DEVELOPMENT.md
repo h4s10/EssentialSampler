@@ -10,7 +10,7 @@ bash scripts/test.sh
 bash scripts/package.sh
 ```
 
-Builds are local and do not fetch dependencies. The output formats are `Hasio Loop.vst3`, `Hasio Loop.component` and `Hasio Loop.app` under `releases/0.6.1/`. All are ad-hoc signed.
+Builds are local and do not fetch dependencies. The output formats are `Essential Sampler.vst3`, `Essential Sampler.component` and `Essential Sampler.app` under `releases/0.6.2/`. All are ad-hoc signed.
 
 ## Architecture
 
@@ -37,13 +37,13 @@ AU parameters expose physical units and convert to the same normalized engine va
 
 ```sh
 python3 tests/installer_tests.py
-./build/au_host_tests "$PWD/releases/0.6.1/Hasio Loop.component" --direct
+./build/au_host_tests "$PWD/releases/0.6.2/Essential Sampler.component" --direct
 ```
 
 Direct ABI tests do **not** prove OS discovery or Logic compatibility. On a Mac with system registry access, also run:
 
 ```sh
-./build/au_host_tests "$PWD/releases/0.6.1/Hasio Loop.component" validate
+./build/au_host_tests "$PWD/releases/0.6.2/Essential Sampler.component" validate
 bash scripts/install-au.command
 arch -arm64 auval -v aumu HsLp Hasi
 ```
@@ -55,10 +55,10 @@ See [VERIFICATION.md](VERIFICATION.md) for actual results and limitations. `bash
 - `bash scripts/install-vst3.command`: install VST3 only.
 - `bash scripts/install-au.command`: install AU and validate it.
 - `bash scripts/repair-au.command`: repair discovery of the existing installed AU without replacing its binary.
-- `bash scripts/setup-dev.command`: copy a new project to `~/Dev/HasioLoop`; refuses to overwrite an existing folder.
-- `bash scripts/update-dev.command`: update `~/Dev/HasioLoop`, back up the previous project and install both formats.
+- `bash scripts/setup-dev.command`: copy a new project to `~/Dev/EssentialSampler`; refuses to overwrite an existing folder.
+- `bash scripts/update-dev.command`: update `~/Dev/EssentialSampler`, back up the previous project and install both formats. If only the legacy `~/Dev/HasioLoop` checkout exists, the updater continues using that folder.
 
-`HASIO_DEV_DIR`, `HASIO_VST3_DIR` and `HASIO_AU_DIR` override destinations for isolated tests. `HASIO_SKIP_AUVAL=1` skips system validation when installing to a nonstandard test folder; it must not be interpreted as an AU validation pass. The installer verifies bundle identity/signature before removing only its `com.apple.quarantine` attribute. It refreshes only the current user's AudioComponentRegistrar, and only when the requested component is absent.
+`HASIO_DEV_DIR`, `HASIO_VST3_DIR` and `HASIO_AU_DIR` override destinations for isolated tests. `HASIO_SKIP_AUVAL=1` skips system validation when installing to a nonstandard test folder; it must not be interpreted as an AU validation pass. The installer verifies bundle identity/signature before removing only its `com.apple.quarantine` attribute. It refreshes only the current user's AudioComponentRegistrar, when the requested component is absent or a legacy bundle has just been renamed.
 
 Exit codes: **1** for installation/verification errors, **2** for a discovered AU that fails validation, **3** for a component still missing from the registry. The last case recommends a Mac restart, as documented by Apple. Shared caches are not deleted.
 

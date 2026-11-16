@@ -151,7 +151,7 @@ int keyboardPitch(NSEvent* event) {
         self.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
         self.toolTip = @"Pinch/scroll to zoom. Drag inside the loop to move it. Click outside or drag S/E to change its bounds. Shift-drag to pan. Double-click to fit.";
         [self registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
-        [self setAccessibilityLabel:@"Hasio Loop sample editor"];
+        [self setAccessibilityLabel:@"Essential Sampler sample editor"];
         _lengthMenu = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(1148, 472, 104, 32) pullsDown:NO];
         for (int i = 1; i < lengthCount; ++i) [_lengthMenu addItemWithTitle:[NSString stringWithUTF8String:lengthNames[i]]];
         _lengthMenu.target = self; _lengthMenu.action = @selector(changeSyncLength:); _lengthMenu.tag = SyncLength;
@@ -373,7 +373,7 @@ int keyboardPitch(NSEvent* event) {
     auto background = [[NSGradient alloc] initWithStartingColor:colour(0x1d1d1f) endingColor:colour(0x18181a)];
     [background drawInRect:self.bounds angle:90];
     auto sample = _model->samples.snapshot();
-    label(@"hasio / loop", NSMakeRect(28, 30, 245, 37), 28, 0xf2f2f5, true);
+    label(@"Essential Sampler", NSMakeRect(28, 30, 260, 37), 26, 0xf2f2f5, true);
     for (int i=0; i<2; ++i) {
         auto r=tabButton(i); bool active = i == (_fxTab ? 1 : 0);
         if (active) box(r,0x38383d,7);
@@ -518,7 +518,7 @@ int keyboardPitch(NSEvent* event) {
     line(1115, 764, 1115, 818, 0x444449);
     label([NSString stringWithFormat:@"%d / 16 voices", _model->activeVoices.load()], NSMakeRect(1134, 784, 118, 22), 14, 0xa3a3aa, false, NSTextAlignmentCenter);
     auto status = _model->getStatus();
-    label(status.empty() ? @"hasio / loop  ·  0.6.1" : [NSString stringWithUTF8String:status.c_str()], NSMakeRect(28, 840, 1180, 16), 10, status.empty() ? 0x65656f : 0xffb58a);
+    label(status.empty() ? @"Essential Sampler  ·  0.6.2" : [NSString stringWithUTF8String:status.c_str()], NSMakeRect(28, 840, 1180, 16), 10, status.empty() ? 0x65656f : 0xffb58a);
 }
 - (void)openFile {
     NSOpenPanel* panel = [NSOpenPanel openPanel]; panel.canChooseDirectories = NO; panel.allowsMultipleSelection = NO;
