@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+version=0.6.0
+folder="releases/$version"
+for extension in vst3 component app; do codesign --verify --strict "$folder/Hasio Loop.$extension"; done
+cp README.md CHANGELOG.md THIRD_PARTY_NOTICES.md LICENSE "$folder/"
+cp scripts/install-release.command "$folder/Install.command"
+chmod +x "$folder/Install.command"
+archive="releases/EssentialSampler-$version-macOS27-arm64-all.zip"
+ditto -c -k --sequesterRsrc --keepParent "$folder" "$archive"
+for format in VST3 AU; do
+    stage="$(mktemp -d "$PWD/build/package.XXXXXX")"
+    trap 'rm -rf "$stage"' EXIT
+    name="EssentialSampler-$version-macOS27-arm64-$format"
+    mkdir -p "$stage/$name"
+    extension=vst3; if [[ "$format" == AU ]]; then extension=component; fi
+    ditto "$folder/Hasio Loop.$extension" "$stage/$name/Hasio Loop.$extension"
+    cp "$folder/"{README.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md,LICENSE,Install.command} "$stage/$name/"
+    ditto -c -k --sequesterRsrc --keepParent "$stage/$name" "releases/$name.zip"
+    rm -rf "$stage"; trap - EXIT
+done
+(cd releases && shasum -a 256 EssentialSampler-"$version"-macOS27-arm64-{AU,VST3,all}.zip > SHA256SUMS.txt)
+echo "Packaged AU, VST3 and combined archives under releases/."

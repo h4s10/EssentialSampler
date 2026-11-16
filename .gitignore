@@ -1,0 +1,6 @@
+/build/
+/releases/
+.DS_Store
+*.dSYM/
+*.zip
+*.sha256
