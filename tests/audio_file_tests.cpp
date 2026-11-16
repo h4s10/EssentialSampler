@@ -95,6 +95,13 @@ Bytes flacMono() {
                "84000028200000007265666572656e6365206c6962464c414320312e352e3020323032353032313100000000"
                "fff86908000314028000c00000007fff5e84");
 }
+// Three reference-encoded blocks: 4096 samples of .25, 4096 of -.5,
+// 3808 of .5. STREAMINFO's total count is cleared to model a streaming encoder.
+Bytes flacUnknownMultipleBlocks() {
+    return hex("664c6143000000221000100000000b00000d0bb800f0000000004e25b9ddcd7a068dd2b6ef920a52f3fa"
+               "84000028200000007265666572656e6365206c6962464c414320312e352e3020323032353032313100000000"
+               "fff8ca080028010009869afff8ca08012f0100076ac5fff87a08020edfd40100052891");
+}
 
 struct Fixtures {
     fs::path directory = fs::temp_directory_path() / ("hasio-audio-tests-" +
@@ -203,6 +210,23 @@ int main() {
     test("FLAC with unknown total frame count decodes to EOF", [&] {
         auto bytes = flacStereo(); setInteger(bytes, 18, (uint64_t(48000) << 44) | (uint64_t(1) << 41) | (uint64_t(15) << 36), 8, true);
         channels(*f.decode(bytes), {-1, -.5f, 0, 32767.f / 32768}, {.5f, -.25f, 0, .25f});
+    });
+    test("Unknown-length FLAC decodes every complete block", [&] {
+        auto s = f.decode(flacUnknownMultipleBlocks());
+        require(s->frames() == 12000 && s->right.size() == 12000, "A FLAC block was lost");
+        require(s->left[0] == .25f && s->left[4095] == .25f && s->left[4096] == -.5f &&
+                s->left[8191] == -.5f && s->left[8192] == .5f && s->left.back() == .5f,
+                "Wrong FLAC block samples");
+        require(s->left == s->right, "FLAC mono channels differ");
+    });
+    test("Unknown-length FLAC rejects damaged final block instead of returning partial audio", [&] {
+        auto bytes = flacUnknownMultipleBlocks(); bytes.back() ^= 1; f.reject(bytes);
+        bytes = flacUnknownMultipleBlocks(); bytes.resize(bytes.size() - 10); f.reject(bytes);
+        bytes = flacUnknownMultipleBlocks(); bytes.push_back(0xff); f.reject(bytes);
+    });
+    test("Unknown-length FLAC rejects a corrupt middle block instead of skipping it", [&] {
+        auto bytes = flacUnknownMultipleBlocks(); bytes[107] ^= 1; f.reject(bytes);
+        bytes = flacUnknownMultipleBlocks(); bytes[102] ^= 1; f.reject(bytes);
     });
     test("8 kHz and 384 kHz limits are accepted", [&] {
         for (unsigned rate : {8000u, 384000u}) {

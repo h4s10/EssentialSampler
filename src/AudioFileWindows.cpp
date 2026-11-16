@@ -280,6 +280,17 @@ bool validateFlac(File& file, std::string& error) {
         offset = start + length;
     }
 }
+bool flacAtEnd(const drflac& decoder, const File& file) {
+    // dr_flac's public read API reports both damaged frames and EOF as zero,
+    // and skips frames with a bad CRC. Its pinned bitstream state lets us test
+    // EOF *before* attempting a new block, including bytes buffered past the
+    // physical file cursor. Keep the multiblock corruption tests when updating
+    // dr_flac: checking only the underlying file position is insufficient.
+    const auto& bits = decoder.bs;
+    return file.position == file.size && bits.unalignedByteCount == 0 &&
+        bits.consumedBits == sizeof(bits.cache) * 8 &&
+        bits.nextL2Line == sizeof(bits.cacheL2) / sizeof(bits.cacheL2[0]);
+}
 std::shared_ptr<Sample> loadFlac(File& file, std::string& error) {
     if (!validateFlac(file, error)) return {};
     std::unique_ptr<drflac, decltype(&drflac_close)> decoder(drflac_open(readFile, seekFlac, tellFlac, &file, nullptr), drflac_close);
@@ -290,13 +301,21 @@ std::shared_ptr<Sample> loadFlac(File& file, std::string& error) {
     std::array<float, 8192> scratch{};
     uint64_t offset = 0;
     for (;;) {
-        // One extra frame reveals a false length declaration or an oversized
-        // unknown-length stream, without ever allocating beyond the limit.
-        const uint64_t limit = declared ? declared : maxFrames;
-        const uint64_t count = std::min<uint64_t>(4096, limit - offset + 1);
+        const bool newBlock = decoder->currentFLACFrame.pcmFramesRemaining == 0;
+        if (newBlock && flacAtEnd(*decoder, file)) break;
+        // Never cross a block boundary in one public read. Otherwise a failed
+        // next block can look like a successful partial read followed by EOF.
+        const uint64_t count = newBlock ? 1 : std::min<uint64_t>(4096, decoder->currentFLACFrame.pcmFramesRemaining);
         const uint64_t got = drflac_read_pcm_frames_f32(decoder.get(), count, scratch.data());
-        if (file.readError || got > limit - offset) { error = declared ? damagedError : sizeError; return {}; }
-        if (!got) break;
+        if (got != count || file.readError) { error = damagedError; return {}; }
+        if (newBlock) {
+            const auto& header = decoder->currentFLACFrame.header;
+            const uint64_t first = header.pcmFrameNumber ? header.pcmFrameNumber
+                : uint64_t(header.flacFrameNumber) * decoder->maxBlockSizeInPCMFrames;
+            if (first != offset) { error = damagedError; return {}; }
+        }
+        const uint64_t limit = declared ? declared : maxFrames;
+        if (got > limit - offset) { error = declared ? damagedError : sizeError; return {}; }
         if (!declared) {
             sample->left.resize(static_cast<size_t>(offset + got)); sample->right.resize(static_cast<size_t>(offset + got));
         }

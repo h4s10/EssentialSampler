@@ -1,4 +1,28 @@
-# Verification — 0.6.2
+# Verification — 0.7.0
+
+## macOS
+
+Built and tested on Apple Silicon, macOS 27.0.1 with Apple clang 21. AU, VST3 and standalone builds pass strict ad-hoc signature verification. The complete DSP/FX/bandwidth sanitizer suite, actual VST3 bundle host, Cocoa UI/file-loading/keyboard tests, direct AU ABI tests and 10 installer regressions passed. Sampler and FX README images were captured from the 0.7.0 native editor.
+
+The user reported the preceding installed AU working. Independent system `auval` and commercial DAW testing remain unavailable in this sandbox; direct AU ABI tests must not be described as system registration or Logic validation.
+
+## Windows
+
+The native `windows-2022` GitHub Actions job builds x64 with MSVC and executes seven CTest suites: engine, effects, bandwidth, FFT, audio files, Win32 editor and actual VST3 host. Release assertions remain enabled. The host checks class ID/version, MIDI and automation offsets, 32/64-bit rendering, tempo, embedded state, FX, focus, editor teardown and DLL unload/reload. Installer tests exercise clean install, upgrade backup and rejection of corrupt binaries. A separate package smoke installs the real release into a temporary folder, verifies metadata/hash identity and loads the installed VST3 through the host suite.
+
+Win32 screenshots come from real HWND rendering on the Windows runner. UI regressions cover loop translation, boundary handles, reversed panning, numeric entry/cancel, gesture callbacks, reserved keys, focus release, Unicode asynchronous sample loading, multiple editors and parent-driven destruction. Hardware audio output, physical touchpad gestures and use inside commercial Windows DAWs have not been manually tested. Standalone uses WinMM with the default Windows output device; it does not ship an ASIO driver.
+
+## Shared portable processing
+
+Both Accelerate and forced-portable DSP paths passed AddressSanitizer/UndefinedBehaviorSanitizer tests on macOS. The portable builds link no Apple audio/DSP frameworks. FFT tests check direct DFT results, unnormalized inverse, phase/bin order, allocation-free transforms and parity against Accelerate. Measured relative RMS error was approximately 1.9e-7 at 2048 points and 2.3e-7 at 32768 points. Forward/Reverse at 1/32 retained the expected 0.5 sine amplitude through 18 kHz.
+
+Decoder fixtures cover PCM/float WAV and AIFF, native FLAC, Unicode names, rates/channels/memory limits, nonfinite and extreme float samples, malformed chunks, truncated files and multi-block FLAC CRC failures with unknown total length. dr_flac does not verify STREAMINFO MD5. RF64, Wave64 and Ogg-FLAC are not supported by the Windows loader.
+
+A Windows CI benchmark rendered ten seconds of 16 stereo voices with both effects in about 5.9 seconds at Free 1x and 8.9 seconds at Reverse 1/32. These are offline measurements on one shared runner, not a guarantee of realtime performance. Extreme polyphony and stretching can require substantial CPU headroom.
+
+See the [Windows workflow history](https://github.com/h4s10/EssentialSampler/actions/workflows/windows.yml) for build/test logs and artifacts. Windows binaries are unsigned; macOS builds are ad-hoc signed, not notarized. The stable-release designation does not imply certification in every DAW.
+
+# Previous verification — 0.6.2
 
 This update changes the displayed product name to Essential Sampler, bundle/executable filenames and upgrade handling. Audio processing and saved-state/parameter identities are unchanged. The user reported the preceding installation working; independent system-registry/Logic validation remains unavailable in this build sandbox.
 

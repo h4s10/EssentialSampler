@@ -29,3 +29,6 @@ try {
     if (@(Get-ChildItem -LiteralPath $destination -Force -Directory | Where-Object Name -Like '.EssentialSampler-install-*').Count) { throw 'Installer left staging folders' }
     Write-Host 'PASS: Windows clean install, upgrade backup, checksum rejection and previous-version preservation.'
 } finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Recurse -Force } }
+# The final child process intentionally failed checksum verification. Do not
+# leak that expected exit code into the CI shell after all assertions passed.
+exit 0
